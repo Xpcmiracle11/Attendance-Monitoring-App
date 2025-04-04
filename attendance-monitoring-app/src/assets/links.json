@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Dashboard",
+    "path": "/dashboard",
+    "icon": "dashboard",
+    "active": "activeDashboard"
+  },
+  {
+    "name": "Departments",
+    "path": "/departments",
+    "icon": "departments",
+    "active": "activeDepartments"
+  },
+  {
+    "name": "Users",
+    "path": "/users",
+    "icon": "users",
+    "active": "activeUsers"
+  },
+  {
+    "name": "Trucks",
+    "path": "/trucks",
+    "icon": "trucks",
+    "active": "activeTrucks"
+  },
+  {
+    "name": "Attendance",
+    "path": "/attendance",
+    "icon": "attendance",
+    "active": "activeAttendance"
+  }
+]

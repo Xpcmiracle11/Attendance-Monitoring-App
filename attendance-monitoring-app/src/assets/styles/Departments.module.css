@@ -1,0 +1,10 @@
+.departments {
+  width: 100%;
+}
+.departments-container {
+  width: 100%;
+  display: flex;
+}
+.sidebar-container {
+  width: fit-content;
+}
