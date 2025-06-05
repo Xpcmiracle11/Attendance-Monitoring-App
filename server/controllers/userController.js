@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
+const ZKLib = require("zklib-js");
 
 const getUsers = (req, res) => {
   const sql = `
@@ -30,23 +31,9 @@ const getUsers = (req, res) => {
         users.salary,
         users.password,
         users.image_file_name, 
-        DATE_FORMAT(users.created_at, '%Y-%m-%d') AS created_at,
-
-        -- Selecting schedule details
-        GROUP_CONCAT(
-            CONCAT(
-                '{ "day": "', schedule_details.day, '", ',
-                '"start_time": "', schedule_details.start_time, '", ',
-                '"end_time": "', schedule_details.end_time, '", ', 
-                '"schedule_status": "', schedule_details.schedule_status, '"}'
-            ) SEPARATOR ',' 
-        ) AS schedule_details_json
-
+        DATE_FORMAT(users.created_at, '%Y-%m-%d') AS created_at
     FROM users users
     LEFT JOIN departments department ON users.department_id = department.id
-    LEFT JOIN schedule_details ON schedule_details.user_id = users.id  
-
-    GROUP BY users.id 
     ORDER BY users.created_at DESC;
   `;
 
@@ -62,10 +49,6 @@ const getUsers = (req, res) => {
       user.image_file_path = user.image_file_name
         ? `http://localhost:8080/uploads/${user.image_file_name}`
         : null;
-
-      if (user.schedule_details_json) {
-        user.schedule_details = JSON.parse(`[${user.schedule_details_json}]`);
-      }
     });
 
     res.json({ success: true, data: results });
@@ -141,7 +124,7 @@ const insertUser = async (req, res) => {
           salary,
           hashedPassword,
         ],
-        (err, result) => {
+        async (err, result) => {
           if (err) {
             console.error("Database error:", err);
             return res
@@ -151,6 +134,26 @@ const insertUser = async (req, res) => {
 
           const userId = result.insertId;
           let newFileName = null;
+
+          const grossMonthly = parseFloat(salary) * 26;
+          const sss = 180;
+          const philhealth = (grossMonthly * 0.05).toFixed(2);
+          const pagibig = 200;
+
+          const contributionSql = `
+              INSERT INTO contributions (user_id, sss, philhealth, pagibig)
+              VALUES (?, ?, ?, ?)
+            `;
+
+          db.query(
+            contributionSql,
+            [userId, sss, philhealth, pagibig],
+            (contribErr) => {
+              if (contribErr) {
+                console.error("Error inserting contributions:", contribErr);
+              }
+            }
+          );
 
           if (req.file) {
             const fileExt = path.extname(req.file.originalname);
@@ -174,40 +177,23 @@ const insertUser = async (req, res) => {
             });
           }
 
-          const daysOfWeek = [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
-          ];
-          const scheduleValues = daysOfWeek.map((day) => [
-            userId,
-            day,
-            null,
-            null,
-            "TBD",
-          ]);
+          const zk = new ZKLib("172.16.1.11", 4370, 10000, 4000);
 
-          const sqlInsertSchedule = `
-            INSERT INTO schedule_details (user_id, day, start_time, end_time, schedule_status) VALUES ?
-          `;
+          try {
+            await zk.createSocket();
 
-          db.query(sqlInsertSchedule, [scheduleValues], (err) => {
-            if (err) {
-              console.error("Error inserting schedule details:", err);
-              return res
-                .status(500)
-                .json({ success: false, message: "Schedule insert error" });
-            }
+            const fullName = `${first_name} ${last_name}`;
+            await zk.setUser(userId, userId.toString(), fullName, "1", "0");
 
-            res.json({
-              success: true,
-              message: "User added successfully with default schedule",
-              image_file_name: newFileName,
-            });
+            await zk.disconnect();
+          } catch (zkErr) {
+            console.error("Failed to register on biometric device:", zkErr);
+          }
+
+          return res.json({
+            success: true,
+            message: "User added successfully with biometric registration",
+            image_file_name: newFileName,
           });
         }
       );
@@ -217,6 +203,7 @@ const insertUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 const updateUser = async (req, res) => {
   const { id } = req.params;
   const {
@@ -255,84 +242,103 @@ const updateUser = async (req, res) => {
           .json({ success: false, message: "User not found." });
       }
 
+      const currentUser = result[0];
+
       const sqlCheckEmail = "SELECT * FROM users WHERE email = ? AND id != ?";
-      db.query(sqlCheckEmail, [email, id], async (err, result) => {
-        if (err) {
-          console.error("Database error:", err);
-          return res
-            .status(500)
-            .json({ success: false, message: "Database error." });
-        }
+      db.query(
+        sqlCheckEmail,
+        [email || currentUser.email, id],
+        async (err, result) => {
+          if (err) {
+            console.error("Database error:", err);
+            return res
+              .status(500)
+              .json({ success: false, message: "Database error." });
+          }
 
-        if (result.length > 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: "Email already exists." });
-        }
+          if (result.length > 0) {
+            return res
+              .status(400)
+              .json({ success: false, message: "Email already exists." });
+          }
 
-        let updateFields = [
-          first_name,
-          middle_name,
-          last_name,
-          gender,
-          birth_date,
-          region,
-          province,
-          municipality,
-          barangay,
-          street,
-          email,
-          phone_number,
-          department_id,
-          role,
-          branch,
-          salary,
-        ];
-        let updateQuery = `
+          const getValue = (newVal, oldVal) =>
+            newVal !== undefined && newVal !== null && newVal !== ""
+              ? newVal
+              : oldVal;
+
+          let updateFields = [
+            getValue(first_name, currentUser.first_name),
+            getValue(middle_name, currentUser.middle_name),
+            getValue(last_name, currentUser.last_name),
+            getValue(gender, currentUser.gender),
+            getValue(birth_date, currentUser.birth_date),
+            getValue(region, currentUser.region),
+            getValue(province, currentUser.province),
+            getValue(municipality, currentUser.municipality),
+            getValue(barangay, currentUser.barangay),
+            getValue(street, currentUser.street),
+            getValue(email, currentUser.email),
+            getValue(phone_number, currentUser.phone_number),
+            getValue(department_id, currentUser.department_id),
+            getValue(role, currentUser.role),
+            getValue(branch, currentUser.branch),
+            getValue(salary, currentUser.salary),
+          ];
+
+          let updateQuery = `
           UPDATE users SET 
             first_name = ?, middle_name = ?, last_name = ?, gender = ?, birth_date = ?,
             region = ?, province = ?, municipality = ?, barangay = ?, street = ?, 
             email = ?, phone_number = ?, department_id = ?, role = ?, branch = ?, salary = ?
         `;
 
-        if (password) {
-          const saltRounds = 10;
-          const hashedPassword = await bcrypt.hash(password, saltRounds);
-          updateQuery += ", password = ?";
-          updateFields.push(hashedPassword);
-        }
-
-        if (req.file) {
-          const fileExt = path.extname(req.file.originalname);
-          const newFileName = `${first_name}_${id}${fileExt}`;
-          const newFilePath = path.join(__dirname, "../uploads/", newFileName);
-
-          fs.renameSync(req.file.path, newFilePath);
-
-          updateQuery += ", image_file_name = ?";
-          updateFields.push(newFileName);
-        }
-
-        updateQuery += " WHERE id = ?";
-        updateFields.push(id);
-
-        db.query(updateQuery, updateFields, (err, result) => {
-          if (err) {
-            console.error("Error updating user:", err);
-            return res
-              .status(500)
-              .json({ success: false, message: "Database error." });
+          if (password) {
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            updateQuery += ", password = ?";
+            updateFields.push(hashedPassword);
           }
 
-          if (result.affectedRows === 0) {
-            return res
-              .status(404)
-              .json({ success: false, message: "User not found." });
+          if (req.file) {
+            const fileExt = path.extname(req.file.originalname);
+            const newFileName = `${getValue(
+              first_name,
+              currentUser.first_name
+            )}_${id}${fileExt}`;
+            const newFilePath = path.join(
+              __dirname,
+              "../uploads/",
+              newFileName
+            );
+
+            fs.renameSync(req.file.path, newFilePath);
+
+            updateQuery += ", image_file_name = ?";
+            updateFields.push(newFileName);
           }
 
-          res.json({ success: true, message: "User updated successfully." });
-        });
-      });
+          updateQuery += " WHERE id = ?";
+          updateFields.push(id);
+
+          db.query(updateQuery, updateFields, (err, result) => {
+            if (err) {
+              console.error("Error updating user:", err);
+              return res
+                .status(500)
+                .json({ success: false, message: "Database error." });
+            }
+
+            if (result.affectedRows === 0) {
+              return res
+                .status(404)
+                .json({ success: false, message: "User not found." });
+            }
+
+            res.json({ success: true, message: "User updated successfully." });
+          });
+        }
+      );
     });
   } catch (error) {
     console.error("Server error:", error);
@@ -402,55 +408,9 @@ const deleteUser = (req, res) => {
   });
 };
 
-const updateSchedule = (req, res) => {
-  const { userId } = req.params;
-  const { schedule_details } = req.body;
-
-  if (!schedule_details || !Array.isArray(schedule_details)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid schedule data" });
-  }
-
-  const updateQueries = schedule_details.map((schedule) => {
-    const { day, start_time, end_time, schedule_status } = schedule;
-    return new Promise((resolve, reject) => {
-      const sqlUpdate = `
-        UPDATE schedule_details
-        SET start_time = ?, end_time = ?, schedule_status = ?
-        WHERE user_id = ? AND day = ?
-      `;
-
-      db.query(
-        sqlUpdate,
-        [start_time, end_time, schedule_status, userId, day],
-        (err, result) => {
-          if (err) {
-            console.error("Error updating schedule for", day, err);
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        }
-      );
-    });
-  });
-
-  Promise.all(updateQueries)
-    .then(() => {
-      res.json({ success: true, message: "Schedule updated successfully" });
-    })
-    .catch((err) => {
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to update schedule" });
-    });
-};
-
 module.exports = {
   getUsers,
   insertUser,
   updateUser,
   deleteUser,
-  updateSchedule,
 };

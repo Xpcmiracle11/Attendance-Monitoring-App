@@ -5,6 +5,7 @@
   left: 0;
   width: 100%;
   height: 10vh;
+  max-height: 80px;
   background-color: var(--background);
   border-bottom: 1px solid var(--borders);
   padding: 1rem;
@@ -47,8 +48,9 @@
   height: 50px;
   padding: 0.2rem;
   border: 1px solid var(--borders);
-  border-radius: 50%;
-  object-fit: cover;}
+  border-radius: 60%;
+  object-fit: cover;
+}
 .user-name {
   font-family: var(--font-primary);
   font-size: 16px;
@@ -102,6 +104,14 @@
   display: flex;
   flex-direction: column;
 }
+.break-option-header {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 14px;
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+}
 .dropdown-option {
   width: 100%;
   text-align: start;
@@ -115,13 +125,158 @@
   align-items: center;
   gap: 0.5rem;
 }
+.break-option {
+  flex-direction: column;
+  align-items: start;
+}
+.break-option-label {
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 14px;
+}
+.break-submit-button {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 6px;
+  background-color: var(--primary-blue);
+  border: 1px solid var(--primary-blue);
+  color: var(--background);
+  font-family: var(--font-secondary);
+  transition: 0.3s ease-in-out;
+  cursor: pointer;
+}
+.disable-break-submit-button {
+  background-color: var(--borders);
+  border: var(--borders);
+  color: var(--text-primary);
+  cursor: not-allowed;
+}
 .dropdown-icon {
   width: 16px;
 }
+.dropdown-link {
+  text-decoration: none;
+  width: 100%;
+  text-align: start;
+  font-family: var(--font-secondary);
+  font-size: 16px;
+  color: var(--text-secondary);
+  transition: 0.3s ease-in-out;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dropdown-settings,
 .dropdown-logout {
   border-top: 1px solid var(--borders);
 }
-.dropdown-option:hover,
-.dropdown-option:focus {
+.dropdown-option:hover:not(.break-option),
+.dropdown-option:focus:not(.break-option) {
   background-color: var(--borders);
+}
+.modal-container {
+  width: 90%;
+  height: fit-content;
+  margin-top: 4rem;
+  background-color: var(--cards);
+  border: 1px solid var(--borders);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.logout-modal-container,
+.break-modal-container {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 400px;
+}
+.logout-modal-header,
+.break-modal-header {
+  text-align: center;
+  font-size: 20px;
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+}
+.overbreak-header {
+  color: var(--danger-red);
+}
+.logout-modal-button-container,
+.break-modal-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.logout-modal-button,
+.break-modal-button {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 16px;
+  border-radius: 6px;
+  background-color: var(--primary-blue);
+  border: 1px solid var(--primary-blue);
+  color: var(--background);
+  font-family: var(--font-secondary);
+  transition: 0.3s ease-in-out;
+  cursor: pointer;
+}
+.break-modal-button:hover,
+.break-modal-button:active,
+.logout-modal-button:hover,
+.logout-modal-button:active {
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.8);
+  background-color: rgba(0, 123, 255, 0.8);
+  border: 1px solid rgba(0, 123, 255, 0.8);
+}
+.cancel-break-modal-button,
+.cancel-logout-modal-button {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 16px;
+  border-radius: 6px;
+  background-color: var(--background);
+  border: 1px solid var(--borders);
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+  transition: 0.3s ease-in-out;
+  cursor: pointer;
+}
+.cancel-break-modal-button:hover,
+.cancel-break-modal-button:active,
+.cancel-logout-modal-button:hover,
+.cancel-logout-modal-button:active {
+  box-shadow: 0 0 4px var(--borders);
+  background-color: var(--borders);
+  border: 1px solid var(--borders);
+}
+@media (min-width: 576px) and (max-width: 767px) {
+  .modal-container {
+    width: 70%;
+  }
+}
+@media (min-width: 768px) and (max-width: 991px) {
+  .modal-container {
+    width: 60%;
+  }
+}
+@media (min-width: 992px) and (max-width: 1199px) {
+  .modal-container {
+    width: 60%;
+  }
+}
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .modal-container {
+    width: 50%;
+  }
+}
+@media (min-width: 1400px) {
+  .modal-container {
+    width: 40%;
+  }
 }

@@ -17,10 +17,10 @@
 }
 .navigation-container {
   width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  padding-top: 1rem;
-  gap: 1rem;
+  flex-wrap: wrap;
+  align-content: space-between;
 }
 .label-title {
   font-family: var(--font-primary);
@@ -33,14 +33,18 @@
   font-size: 20px;
   font-weight: normal;
 }
+.label-links-container {
+  width: 100%;
+  height: fit-content;
+}
 .label-container {
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  padding: 1rem;
 }
-
 .navigation-option-container {
   width: 100%;
   display: flex;
@@ -53,6 +57,12 @@
   gap: 0.5rem;
   color: var(--text-secondary);
   padding: 1rem 1rem 1rem 1.5rem;
+}
+.navigation-option:hover {
+  background-color: var(--borders);
+}
+.navigation-option:hover .navigation-link {
+  color: var(--primary-blue);
 }
 .active {
   background-color: var(--borders);
@@ -72,4 +82,67 @@
 }
 .navigation-icon {
   width: 25px;
+}
+[data-theme="dark"] .inactive-icon {
+  filter: brightness(0) invert(77%) sepia(6%) saturate(245%) hue-rotate(165deg);
+}
+.active-icon {
+  filter: none;
+}
+.theme-container {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  padding: 1rem;
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 80px;
+  height: 40px;
+  cursor: pointer;
+}
+.toggle-switch input[type="checkbox"] {
+  display: none;
+}
+.toggle-switch-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ddd;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 2px #ccc;
+  transition: background-color 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px;
+}
+.theme-icon {
+  width: 20px;
+  height: 20px;
+}
+.toggle-switch-handle {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 30px;
+  height: 30px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease-in-out;
+}
+.toggle-switch
+  input[type="checkbox"]:checked
+  + .toggle-switch-background
+  .toggle-switch-handle {
+  transform: translateX(40px);
+}
+.toggle-switch input[type="checkbox"]:checked + .toggle-switch-background {
+  background-color: #212529;
+  box-shadow: inset 0 0 0 2px #6c757d;
 }

@@ -27,6 +27,8 @@ import Select from "react-select";
 import Philippines from "phil-reg-prov-mun-brgy";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const HRUsers = () => {
   const [users, setUsers] = useState([]);
@@ -42,8 +44,8 @@ const HRUsers = () => {
   const [appliedToDate, setAppliedToDate] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setisDeleteModalOpen] = useState(false);
-  const [isViewModalOpen, setisViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -103,10 +105,12 @@ const HRUsers = () => {
     apiError: "",
     timeErrors: {},
   });
+  const isDarkMode =
+    document.documentElement.getAttribute("data-theme") === "dark";
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/api/users");
+      const response = await axios.get(`${API_BASE_URL}/users`);
       if (response.data.success) {
         setUsers(response.data.data);
       }
@@ -114,6 +118,7 @@ const HRUsers = () => {
       console.error("Error fetching users:", error);
     }
   };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -179,21 +184,58 @@ const HRUsers = () => {
   const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
   const toggleFilterDropdown = () => setFilterDropdownOpen(!filterDropdownOpen);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    return date.toLocaleDateString("en-US", options);
+  };
+
+  const tableColumn = [
+    "ID",
+    "First Name",
+    "Middle Name",
+    "Last Name",
+    "Gender",
+    "Date of Birth",
+    "Email",
+    "Phone Number",
+    "Region",
+    "Province",
+    "Municipality",
+    "Barangay",
+    "Street",
+    "Department Name",
+    "Role",
+    "Branch",
+    "Salary Type",
+    "Salary",
+    "Created At",
+  ];
+
   const exportToExcel = (data) => {
-    const excludedColumns = [
-      "full_name",
-      "password",
-      "image_file_path",
-      "updated_at",
-    ];
+    const formattedData = data.map((item, index) => ({
+      ID: index + 1,
+      "First Name": item.first_name || "",
+      "Middle Name": item.middle_name || "",
+      "Last Name": item.last_name || "",
+      Gender: item.gender || "",
+      "Date of Birth": formatDate(item.birth_date),
+      Email: item.email || "",
+      "Phone Number": item.phone_number || "",
+      Region: item.region || "",
+      Province: item.province || "",
+      Municipality: item.municipality || "",
+      Barangay: item.barangay || "",
+      Street: item.street || "",
+      "Department Name": item.department_name || "",
+      Role: item.role || "",
+      Branch: item.branch || "",
+      Salary: item.salary || "",
+      "Created At": formatDate(item.created_at),
+    }));
 
-    const filteredData = data.map((item) =>
-      Object.fromEntries(
-        Object.entries(item).filter(([key]) => !excludedColumns.includes(key))
-      )
-    );
-
-    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
 
@@ -209,117 +251,80 @@ const HRUsers = () => {
     saveAs(blob, "users.xlsx");
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
-
+  const exportToPDF = (data) => {
+    const doc = new jsPDF("landscape");
     doc.text("Users Report", 14, 10);
 
-    const tableColumn = [
-      "ID",
-      "First Name",
-      "Middle Name",
-      "Last Name",
-      "Gender",
-      "Date of Birth",
-      "Email",
-      "Phone Number",
-      "Region",
-      "Province",
-      "Municipality",
-      "Barangay",
-      "Street",
-      "Department Name",
-      "Role",
-      "Branch",
-      "Salary",
-      "Created At",
-    ];
-    const tableRows = [];
-
-    users.forEach((user, index) => {
-      const userData = [
-        index + 1,
-        user.first_name || "",
-        user.middle_name || "",
-        user.last_name || "",
-        user.gender || "",
-        user.birth_date || "",
-        user.email || "",
-        user.phone_number || "",
-        user.region || "",
-        user.province || "",
-        user.municipality || "",
-        user.barangay || "",
-        user.street || "",
-        user.department_name || "",
-        user.role || "",
-        user.branch || "",
-        user.salary || "",
-        user.created_at || "",
-      ];
-      tableRows.push(userData);
-    });
+    const tableRows = data.map((item, index) => [
+      index + 1,
+      item.first_name || "",
+      item.middle_name || "",
+      item.last_name || "",
+      item.gender || "",
+      formatDate(item.birth_date),
+      item.email || "",
+      item.phone_number || "",
+      item.region || "",
+      item.province || "",
+      item.municipality || "",
+      item.barangay || "",
+      item.street || "",
+      item.department_name || "",
+      item.role || "",
+      item.branch || "",
+      item.salary || "",
+      formatDate(item.created_at),
+    ]);
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 20,
-      margin: { top: 20 },
-      styles: { fontSize: 8 },
-      theme: "grid",
-      didDrawPage: () => {
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(10);
-        doc.text(
-          `Page ${pageCount}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          {
-            align: "center",
-          }
-        );
-      },
     });
 
     doc.save("users.pdf");
   };
 
   const exportToWord = (data) => {
-    const excludedColumns = [
-      "full_name",
-      "password",
-      "image_file_path",
-      "updated_at",
-    ];
+    const columnKeyMap = {
+      ID: "id",
+      "First Name": "first_name",
+      "Middle Name": "middle_name",
+      "Last Name": "last_name",
+      Gender: "gender",
+      "Date of Birth": "birth_date",
+      Email: "email",
+      "Phone Number": "phone_number",
+      Region: "region",
+      Province: "province",
+      Municipality: "municipality",
+      Barangay: "barangay",
+      Street: "street",
+      "Department Name": "department_name",
+      Role: "role",
+      Branch: "branch",
+      Salary: "salary",
+      "Created At": "created_at",
+    };
 
-    const headers = Object.keys(data[0]).filter(
-      (key) => !excludedColumns.includes(key)
-    );
-
-    const headerRow = new TableRow({
-      children: headers.map(
-        (header) =>
-          new TableCell({
-            children: [new Paragraph({ text: header, bold: true })],
-          })
-      ),
+    const tableRows = data.map((item, index) => {
+      return new TableRow({
+        children: tableColumn.map((column) => {
+          const key = columnKeyMap[column];
+          const value =
+            column === "ID"
+              ? (index + 1).toString()
+              : column === "Created At"
+              ? formatDate(item[key])
+              : item[key]
+              ? item[key].toString()
+              : "";
+          return new TableCell({
+            children: [new Paragraph(value)],
+          });
+        }),
+      });
     });
-
-    const tableRows = data.map((item) => {
-      const filteredValues = headers.map(
-        (key) =>
-          new TableCell({
-            children: [new Paragraph(item[key]?.toString() || "-")],
-          })
-      );
-      return new TableRow({ children: filteredValues });
-    });
-    const pageWidth = 16838;
-    const pageHeight = 11906;
 
     const doc = new Document({
       sections: [
@@ -327,20 +332,14 @@ const HRUsers = () => {
           properties: {
             page: {
               size: {
-                width: pageWidth,
-                height: pageHeight,
+                width: 16838,
+                height: 11906,
               },
             },
           },
           children: [
-            new Paragraph({
-              text: "Exported Data",
-              heading: "Heading1",
-            }),
-            new Table({
-              rows: [headerRow, ...tableRows],
-              width: { size: 100, type: "pct" },
-            }),
+            new Paragraph("Exported Data"),
+            new Table({ rows: tableRows }),
           ],
         },
       ],
@@ -356,8 +355,7 @@ const HRUsers = () => {
       setExportError("Please select an export format.");
       return;
     }
-    console.log(exportFromDate);
-    console.log(exportToDate);
+
     const filteredData = users.filter((user) => {
       const userDate = user.created_at
         ? new Date(user.created_at.split("T")[0])
@@ -375,13 +373,19 @@ const HRUsers = () => {
       return;
     }
 
+    const dataWithId = filteredData.map((item, index) => ({
+      ...item,
+      id: index + 1,
+    }));
+
     if (exportFileType === "excel") {
-      exportToExcel(filteredData);
+      exportToExcel(dataWithId);
     } else if (exportFileType === "pdf") {
-      exportToPDF(filteredData);
+      exportToPDF(dataWithId);
     } else if (exportFileType === "word") {
-      exportToWord(filteredData);
+      exportToWord(dataWithId);
     }
+
     setExportFromDate("");
     setExportToDate("");
     setExportFileType("");
@@ -464,6 +468,18 @@ const HRUsers = () => {
       apiError: "",
     });
   };
+
+  const salaryTypeOptions = [
+    {
+      value: "Monthly",
+      label: "Monthly",
+    },
+    {
+      value: "Daily",
+      label: "Daily",
+    },
+  ];
+
   const genderOptions = [
     { value: "Male", label: "Male" },
     { value: "Female", label: "Female" },
@@ -577,7 +593,7 @@ const HRUsers = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/api/departments")
+      .get(`${API_BASE_URL}/departments`)
       .then((response) => {
         if (response.data.success && Array.isArray(response.data.data)) {
           const options = response.data.data.map((dept) => ({
@@ -646,7 +662,7 @@ const HRUsers = () => {
         newErrors.lastName = "Last name is required.";
         hasError = true;
       }
-      if (!usersData.gender.trim) {
+      if (!usersData.gender.trim()) {
         newErrors.gender = "Gender is required.";
         hasError = true;
       }
@@ -766,7 +782,7 @@ const HRUsers = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:8080/api/insert-user",
+        `${API_BASE_URL}/insert-user`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -968,7 +984,7 @@ const HRUsers = () => {
         formData.append("imageFileName", usersData.imageFileName);
       }
       const response = await axios.put(
-        `http://localhost:8080/api/update-user/${selectedUser.id}`,
+        `${API_BASE_URL}/update-user/${selectedUser.id}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -991,8 +1007,8 @@ const HRUsers = () => {
       setErrors((prev) => ({
         ...prev,
         email:
-          error.response?.data?.message === "User already exists."
-            ? "User already exists."
+          error.response?.data?.message === "Email already exists."
+            ? "Email already exists."
             : error.response?.data?.message || "Something went wrong.",
       }));
       setStep(1);
@@ -1001,18 +1017,18 @@ const HRUsers = () => {
 
   const toggleDeleteModal = (user = null) => {
     setSelectedUser(user);
-    setisDeleteModalOpen(!isDeleteModalOpen);
+    setIsDeleteModalOpen(!isDeleteModalOpen);
   };
   const closeDeleteModal = () => {
     setSelectedUser(null);
-    setisDeleteModalOpen(false);
+    setIsDeleteModalOpen(false);
   };
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
 
     try {
       const response = await axios.delete(
-        `http://localhost:8080/api/delete-user/${selectedUser.id}`
+        `${API_BASE_URL}/delete-user/${selectedUser.id}`
       );
 
       if (response.data.success) {
@@ -1031,128 +1047,18 @@ const HRUsers = () => {
     }
   };
 
-  const scheduleOptions = [
-    { value: "TBD", label: "TBD" },
-    { value: "Flexible", label: "Flexible" },
-    { value: "Fixed", label: "Fixed" },
-    { value: "Overtime", label: "Overtime" },
-    { value: "Day Off", label: "Day Off" },
-  ];
-
   const toggleViewModal = (user = null) => {
     setSelectedUser(user);
-    setisViewModalOpen(!isViewModalOpen);
+    setIsViewModalOpen(!isViewModalOpen);
   };
+
   const closeViewModal = () => {
     setSelectedUser(null);
-    setisViewModalOpen(false);
+    setIsViewModalOpen(false);
     setErrors({
       apiError: "",
       timeErrors: {},
     });
-  };
-
-  const handleScheduleInputChange = (value, index, field) => {
-    const updatedSchedule = [...selectedUser.schedule_details];
-    updatedSchedule[index] = {
-      ...updatedSchedule[index],
-      [field]: value,
-    };
-
-    if (field === "schedule_status") {
-      if (value !== "Fixed" && value !== "Overtime") {
-        updatedSchedule[index].start_time = "00:00:00";
-        updatedSchedule[index].end_time = "00:00:00";
-      }
-    }
-
-    if (field === "start_time" && !value) {
-      updatedSchedule[index].end_time = "";
-    }
-
-    setErrors((prevErrors) => ({
-      ...prevErrors,
-      timeErrors: {
-        ...prevErrors.timeErrors,
-        [updatedSchedule[index].day]: "",
-      },
-    }));
-
-    setSelectedUser((prevUser) => ({
-      ...prevUser,
-      schedule_details: updatedSchedule,
-    }));
-  };
-
-  const handleUpdateSchedule = async (e) => {
-    e.preventDefault();
-
-    setErrors({
-      apiError: "",
-      timeErrors: {},
-    });
-
-    const newTimeErrors = {};
-    let hasError = false;
-
-    const newScheduleDetails = [...selectedUser.schedule_details];
-
-    for (const schedule of newScheduleDetails) {
-      if (["Fixed", "Overtime"].includes(schedule.schedule_status)) {
-        if (!schedule.start_time || schedule.start_time === "00:00:00") {
-          hasError = true;
-          newTimeErrors[
-            schedule.day
-          ] = `Start time is required for ${schedule.day}.`;
-        }
-        if (!schedule.end_time || schedule.end_time === "00:00:00") {
-          hasError = true;
-          newTimeErrors[
-            schedule.day
-          ] = `End time is required for ${schedule.day}.`;
-        }
-        if (
-          schedule.start_time === "00:00:00" &&
-          schedule.end_time === "00:00:00"
-        ) {
-          hasError = true;
-          newTimeErrors[
-            schedule.day
-          ] = `Start time and end time are required for ${schedule.day}.`;
-        }
-      }
-    }
-
-    if (hasError) {
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-        timeErrors: newTimeErrors,
-      }));
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `http://localhost:8080/api/update-schedule/${selectedUser.id}`,
-        { schedule_details: selectedUser.schedule_details }
-      );
-
-      if (response.data.success) {
-        fetchUsers();
-        closeViewModal();
-      } else {
-        setErrors((prevErrors) => ({
-          ...prevErrors,
-          apiError: "Failed to update schedule.",
-        }));
-      }
-    } catch (error) {
-      console.error("Error updating schedule:", error);
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-        apiError: "An error occurred while updating the schedule.",
-      }));
-    }
   };
 
   const toggleSortDropdown = () => {
@@ -1642,7 +1548,7 @@ const HRUsers = () => {
               {paginatedUsers.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="3"
+                    colSpan="8"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
                     No users found.
@@ -1819,14 +1725,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={genderOptions}
@@ -1936,14 +1904,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={regions}
@@ -1969,14 +1999,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.provinces}
@@ -2005,14 +2097,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.municipalities}
@@ -2041,14 +2195,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.barangays}
@@ -2094,14 +2310,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={departmentOptions}
@@ -2157,22 +2435,26 @@ const HRUsers = () => {
                       <p className={styles["error-message"]}>{errors.branch}</p>
                     )}
                   </label>
-                  <label className={styles.label} htmlFor="salary">
-                    Salary
-                    <input
-                      className={`${styles.input} ${
-                        errors.salary ? styles["error-input"] : ""
-                      }`}
-                      type="number"
-                      name="salary"
-                      id="salary"
-                      value={usersData.salary}
-                      onChange={handleInputChange}
-                    />
-                    {errors.salary && (
-                      <p className={styles["error-message"]}>{errors.salary}</p>
-                    )}
-                  </label>
+                  <div className={styles["salary-input-details-container"]}>
+                    <label className={styles.label} htmlFor="salary">
+                      Daily Salary
+                      <input
+                        className={`${styles.input} ${
+                          errors.salary ? styles["error-input"] : ""
+                        }`}
+                        type="number"
+                        name="salary"
+                        id="salary"
+                        value={usersData.salary}
+                        onChange={handleInputChange}
+                      />
+                      {errors.salary && (
+                        <p className={styles["error-message"]}>
+                          {errors.salary}
+                        </p>
+                      )}
+                    </label>
+                  </div>
                   <label className={styles.label} htmlFor="password">
                     Password
                     <input
@@ -2243,8 +2525,8 @@ const HRUsers = () => {
                 </div>
               )}
               <div className={styles["add-modal-button-container"]}>
-                <div className={styles["prev-button-container"]}>
-                  {step > 1 && (
+                {step > 1 && (
+                  <div className={styles["prev-button-container"]}>
                     <button
                       className={styles["prev-button"]}
                       type="button"
@@ -2252,10 +2534,10 @@ const HRUsers = () => {
                     >
                       Previous
                     </button>
-                  )}
-                </div>
-                <div className={styles["next-button-container"]}>
-                  {step < 4 && (
+                  </div>
+                )}
+                {step < 4 && (
+                  <div className={styles["next-button-container"]}>
                     <button
                       className={styles["next-button"]}
                       type="button"
@@ -2263,8 +2545,8 @@ const HRUsers = () => {
                     >
                       Next
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
                 {step === 4 && (
                   <div className={styles["submit-button-container"]}>
                     <button type="submit" className={styles["submit-button"]}>
@@ -2361,14 +2643,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={genderOptions}
@@ -2478,14 +2822,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={regions}
@@ -2528,14 +2934,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.provinces}
@@ -2575,14 +3043,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.municipalities}
@@ -2619,14 +3149,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={filtered.barangays}
@@ -2675,14 +3267,76 @@ const HRUsers = () => {
                         control: (base, state) => ({
                           ...base,
                           borderColor: state.isFocused
-                            ? "#6c757d"
-                            : base.borderColor,
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
                           boxShadow: state.isFocused
                             ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
                             : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                           "&:hover": {
+                            borderColor: "var(--text-secondary)",
                             boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
                           },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
                         }),
                       }}
                       options={departmentOptions}
@@ -2741,22 +3395,26 @@ const HRUsers = () => {
                       <p className={styles["error-message"]}>{errors.branch}</p>
                     )}
                   </label>
-                  <label className={styles.label} htmlFor="salary">
-                    Salary
-                    <input
-                      className={`${styles.input} ${
-                        errors.salary ? styles["error-input"] : ""
-                      }`}
-                      type="number"
-                      name="salary"
-                      id="salary"
-                      value={usersData.salary}
-                      onChange={handleInputChange}
-                    />
-                    {errors.salary && (
-                      <p className={styles["error-message"]}>{errors.salary}</p>
-                    )}
-                  </label>
+                  <div className={styles["salary-input-details-container"]}>
+                    <label className={styles.label} htmlFor="salary">
+                      Daily Salary
+                      <input
+                        className={`${styles.input} ${
+                          errors.salary ? styles["error-input"] : ""
+                        }`}
+                        type="number"
+                        name="salary"
+                        id="salary"
+                        value={usersData.salary}
+                        onChange={handleInputChange}
+                      />
+                      {errors.salary && (
+                        <p className={styles["error-message"]}>
+                          {errors.salary}
+                        </p>
+                      )}
+                    </label>
+                  </div>
                   <label className={styles.label} htmlFor="password">
                     Password
                     <input
@@ -2833,8 +3491,8 @@ const HRUsers = () => {
                 </div>
               )}
               <div className={styles["add-modal-button-container"]}>
-                <div className={styles["prev-button-container"]}>
-                  {step > 1 && (
+                {step > 1 && (
+                  <div className={styles["prev-button-container"]}>
                     <button
                       className={styles["prev-button"]}
                       type="button"
@@ -2842,10 +3500,10 @@ const HRUsers = () => {
                     >
                       Previous
                     </button>
-                  )}
-                </div>
-                <div className={styles["next-button-container"]}>
-                  {step < 4 && (
+                  </div>
+                )}
+                {step < 4 && (
+                  <div className={styles["next-button-container"]}>
                     <button
                       className={styles["next-button"]}
                       type="button"
@@ -2853,8 +3511,8 @@ const HRUsers = () => {
                     >
                       Next
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
                 {step === 4 && (
                   <div className={styles["submit-button-container"]}>
                     <button type="submit" className={styles["submit-button"]}>
@@ -2870,7 +3528,7 @@ const HRUsers = () => {
       {isDeleteModalOpen && selectedUser && (
         <Modal
           isOpen={isDeleteModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={() => setIsDeleteModalOpen(false)}
         >
           <div
             className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
@@ -2898,7 +3556,7 @@ const HRUsers = () => {
       {isViewModalOpen && selectedUser && (
         <Modal
           isOpen={isViewModalOpen}
-          onClose={() => setisViewModalOpen(false)}
+          onClose={() => setIsViewModalOpen(false)}
         >
           <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
@@ -2928,7 +3586,7 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>Name:</p>
+                  <p className={styles["modal-view-user-label"]}>Name</p>
                   <p className={styles["modal-view-user-information"]}>
                     {selectedUser.full_name}
                   </p>
@@ -2938,7 +3596,7 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>Gender:</p>
+                  <p className={styles["modal-view-user-label"]}>Gender</p>
                   <p className={styles["modal-view-user-information"]}>
                     {selectedUser.gender}
                   </p>
@@ -2949,7 +3607,7 @@ const HRUsers = () => {
                   }
                 >
                   <p className={styles["modal-view-user-label"]}>
-                    Date of Birth:
+                    Date of Birth
                   </p>
                   <p className={styles["modal-view-user-information"]}>
                     {new Date(selectedUser.birth_date).toLocaleDateString(
@@ -2967,7 +3625,7 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>Email:</p>
+                  <p className={styles["modal-view-user-label"]}>Email</p>
                   <p className={styles["modal-view-user-information"]}>
                     {selectedUser.email}
                   </p>
@@ -2978,7 +3636,7 @@ const HRUsers = () => {
                   }
                 >
                   <p className={styles["modal-view-user-label"]}>
-                    Phone Number:
+                    Phone Number
                   </p>
                   <p className={styles["modal-view-user-information"]}>
                     +{selectedUser.phone_number}
@@ -2989,7 +3647,7 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>Address:</p>
+                  <p className={styles["modal-view-user-label"]}>Address</p>
                   <p className={styles["modal-view-user-information"]}>
                     {selectedUser.province}, {selectedUser.municipality},{" "}
                     {selectedUser.barangay}
@@ -3001,7 +3659,7 @@ const HRUsers = () => {
                   }
                 >
                   <p className={styles["modal-view-user-label"]}>
-                    Branch Department & Role:
+                    Branch Department & Role
                   </p>
                   <p className={styles["modal-view-user-information"]}>
                     {selectedUser.branch} {selectedUser.department_name}{" "}
@@ -3013,134 +3671,15 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>Salary:</p>
+                  <p className={styles["modal-view-user-label"]}>
+                    Salary and Salary Type
+                  </p>
                   <p className={styles["modal-view-user-information"]}>
                     ₱{selectedUser.salary}
                   </p>
                 </div>
               </div>
             </div>
-            <div className={styles["modal-view-gap"]}></div>
-            <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit Schedule</h3>
-            </div>
-            <form
-              className={styles["modal-schedule-body-container"]}
-              onSubmit={handleUpdateSchedule}
-            >
-              {selectedUser.schedule_details &&
-                selectedUser.schedule_details.map((schedule, index) => (
-                  <div
-                    key={index}
-                    className={styles["modal-schedule-container"]}
-                  >
-                    <p className={styles["modal-days"]}>{schedule.day}</p>
-                    <label
-                      className={`${styles["modal-schedule-label"]} ${styles["modal-schedule-status-label"]}`}
-                      htmlFor={`schedule_type_${index}`}
-                    >
-                      Schedule Status
-                      <Select
-                        className={`${styles.input}`}
-                        styles={{
-                          control: (base, state) => ({
-                            ...base,
-                            borderColor: state.isFocused
-                              ? "#6c757d"
-                              : base.borderColor,
-                            boxShadow: state.isFocused
-                              ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                              : "none",
-                            "&:hover": {
-                              boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                            },
-                          }),
-                        }}
-                        options={scheduleOptions}
-                        value={scheduleOptions.find(
-                          (option) => option.value === schedule.schedule_status
-                        )}
-                        onChange={(selectedOption) =>
-                          handleScheduleInputChange(
-                            selectedOption.value,
-                            index,
-                            "schedule_status"
-                          )
-                        }
-                        placeholder="Select Schedule Type"
-                        id={`schedule_type_${index}`}
-                      />
-                    </label>
-                    {["Fixed", "Overtime"].includes(
-                      schedule.schedule_status
-                    ) && (
-                      <>
-                        <label
-                          className={styles["modal-schedule-label"]}
-                          htmlFor={`start_time_${index}`}
-                        >
-                          Start Time
-                          <input
-                            className={`${styles["modal-schedule-input"]} ${
-                              errors.timeErrors[schedule.day]
-                                ? styles["error-input"]
-                                : ""
-                            }`}
-                            id={`start_time_${index}`}
-                            type="time"
-                            value={schedule.start_time}
-                            onChange={(e) =>
-                              handleScheduleInputChange(
-                                e.target.value,
-                                index,
-                                "start_time"
-                              )
-                            }
-                          />
-                        </label>
-                        <label
-                          className={styles["modal-schedule-label"]}
-                          htmlFor={`end_time_${index}`}
-                        >
-                          End Time
-                          <input
-                            className={`${styles["modal-schedule-input"]} ${
-                              errors.timeErrors[schedule.day]
-                                ? styles["error-input"]
-                                : ""
-                            }`}
-                            id={`end_time_${index}`}
-                            type="time"
-                            value={schedule.end_time}
-                            disabled={
-                              !schedule.start_time ||
-                              schedule.start_time === "00:00:00"
-                            }
-                            onChange={(e) =>
-                              handleScheduleInputChange(
-                                e.target.value,
-                                index,
-                                "end_time"
-                              )
-                            }
-                          />
-                        </label>
-                        {errors.timeErrors[schedule.day] && (
-                          <p className={styles["error-message"]}>
-                            {errors.timeErrors[schedule.day]}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              {errors.apiError && (
-                <p className={styles["error-message"]}>{errors.apiError}</p>
-              )}
-              <button className={styles["submit-button"]}>
-                Submit Schedule
-              </button>
-            </form>
           </div>
         </Modal>
       )}

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import HRDepartmentsComponents from "../components/department-components/hr-components/HRDepartments";
+import ITDepartments from "../components/department-components/it-components/ITDepartments";
 import styles from "../assets/styles/Departments.module.css";
 
 const Departments = () => {
@@ -45,7 +45,7 @@ const Departments = () => {
             toggleSidebar={toggleSidebar}
           />
         </div>
-        <HRDepartmentsComponents />
+        <ITDepartments />
       </div>
     </div>
   );

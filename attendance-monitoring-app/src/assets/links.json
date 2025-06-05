@@ -24,9 +24,39 @@
     "active": "activeTrucks"
   },
   {
+    "name": "Monitoring",
+    "path": "/monitoring",
+    "icon": "monitor",
+    "active": "activeMonitor"
+  },
+  {
     "name": "Attendance",
     "path": "/attendance",
     "icon": "attendance",
     "active": "activeAttendance"
+  },
+  {
+    "name": "Dispatch",
+    "path": "/dispatch",
+    "icon": "dispatch",
+    "active": "activeDispatch"
+  },
+  {
+    "name": "Device",
+    "path": "/device",
+    "icon": "device",
+    "active": "activeDevice"
+  },
+  {
+    "name": "Payroll",
+    "path": "/payroll",
+    "icon": "payroll",
+    "active": "activePayroll"
+  },
+  {
+    "name": "Loan",
+    "path": "/loan",
+    "icon": "loan",
+    "active": "activeLoan"
   }
 ]
