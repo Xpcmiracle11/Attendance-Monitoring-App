@@ -21,6 +21,8 @@ const getAttendance = (req, res) => {
         attendance_details ad
     LEFT JOIN 
         users u ON ad.user_id = u.id
+    WHERE 
+        u.id IS NOT NULL
     ORDER BY 
         ad.created_at DESC;
   `;
@@ -32,17 +34,16 @@ const getAttendance = (req, res) => {
     }
 
     if (results.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No attendance records found." });
+      return res.status(404).json({
+        success: false,
+        message: "No attendance records found.",
+      });
     }
 
     results.forEach((attendance) => {
-      if (attendance.image_file_name) {
-        attendance.image_file_path = `http://localhost:8080/uploads/${attendance.image_file_name}`;
-      } else {
-        attendance.image_file_path = null;
-      }
+      attendance.image_file_path = attendance.image_file_name
+        ? `http://localhost:8080/uploads/${attendance.image_file_name}`
+        : null;
     });
 
     res.json({ success: true, data: results });
@@ -82,7 +83,7 @@ const updateAttendance = (req, res) => {
 };
 
 async function syncAttendanceFromBiometric() {
-  const zkInstance = new ZKLib("172.16.1.11", 4370, 5200, 5000);
+  const zkInstance = new ZKLib("172.16.1.6", 4370, 5200, 5000);
 
   try {
     await zkInstance.createSocket();
@@ -100,6 +101,25 @@ async function syncAttendanceFromBiometric() {
         console.warn(
           `⚠️ Invalid timestamp for user ${userId}: ${log.recordTime}`
         );
+        continue;
+      }
+
+      const userExists = await new Promise((resolve) => {
+        db.query(
+          "SELECT id FROM users WHERE id = ?",
+          [userId],
+          (err, results) => {
+            if (err) {
+              console.error("Error checking user existence:", err);
+              return resolve(false);
+            }
+            resolve(results.length > 0);
+          }
+        );
+      });
+
+      if (!userExists) {
+        console.log(`⛔ Skipping log for deleted user ID ${userId}`);
         continue;
       }
 
@@ -125,7 +145,7 @@ async function syncAttendanceFromBiometric() {
             `;
             db.query(insertQuery, [userId, timestamp, "Present"], (err) => {
               if (err) console.error("Insert error:", err);
-              else console.log(`Clock in recorded for user ${userId}`);
+              else console.log(`✅ Clock in recorded for user ${userId}`);
               return resolve();
             });
           } else {
@@ -140,12 +160,12 @@ async function syncAttendanceFromBiometric() {
                 `;
                 db.query(updateQuery, [timestamp, lastLog.id], (err) => {
                   if (err) console.error("Update error:", err);
-                  else console.log(`Clock out updated for user ${userId}`);
+                  else console.log(`✅ Clock out updated for user ${userId}`);
                   return resolve();
                 });
               } else {
                 console.log(
-                  `Skipping clock out for user ${userId} — same or earlier timestamp.`
+                  `⏩ Skipping clock out for user ${userId} — earlier timestamp.`
                 );
                 return resolve();
               }

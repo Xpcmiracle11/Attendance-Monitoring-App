@@ -8,7 +8,6 @@ const socketIo = require("socket.io");
 
 const { startBiometricCronJob } = require("./controllers/attendanceController");
 
-// Import your routes
 const authRoutes = require("./routes/authRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -22,7 +21,7 @@ const deviceRoutes = require("./routes/deviceRoutes");
 const payrollRoutes = require("./routes/payrollRoutes");
 const loanRoutes = require("./routes/loanRoutes");
 const contributionRoutes = require("./routes/contributionRoutes");
-
+const chartRoutes = require("./routes/chartRoutes");
 const app = express();
 const server = http.createServer(app);
 
@@ -52,6 +51,7 @@ app.use("/api/", deviceRoutes);
 app.use("/api/", payrollRoutes);
 app.use("/api/", loanRoutes);
 app.use("/api/", contributionRoutes);
+app.use("/api/", chartRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });

@@ -3,6 +3,7 @@ const path = require("path");
 const bcrypt = require("bcrypt");
 const db = require("../config/db");
 const ZKLib = require("zklib-js");
+const Zkteco = require("zkteco-js");
 
 const getUsers = (req, res) => {
   const sql = `
@@ -24,6 +25,7 @@ const getUsers = (req, res) => {
         users.municipality, 
         users.barangay,
         users.street,
+        users.company,
         users.email, 
         users.phone_number, 
         users.role, 
@@ -68,6 +70,7 @@ const insertUser = async (req, res) => {
       municipality,
       barangay,
       street,
+      company,
       email,
       phone_number,
       department_id,
@@ -98,9 +101,9 @@ const insertUser = async (req, res) => {
       const sqlInsert = `
         INSERT INTO users (
           first_name, middle_name, last_name, gender, birth_date, region, province, 
-          municipality, barangay, street, email, phone_number, department_id, 
+          municipality, barangay, street, company, email, phone_number, department_id, 
           role, branch, salary, password, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
       db.query(
@@ -116,6 +119,7 @@ const insertUser = async (req, res) => {
           municipality,
           barangay,
           street,
+          company,
           email,
           phone_number,
           department_id,
@@ -177,7 +181,7 @@ const insertUser = async (req, res) => {
             });
           }
 
-          const zk = new ZKLib("172.16.1.11", 4370, 10000, 4000);
+          const zk = new ZKLib("172.16.1.6", 4370, 10000, 4000);
 
           try {
             await zk.createSocket();
@@ -218,6 +222,7 @@ const updateUser = async (req, res) => {
     barangay,
     street,
     email,
+    company,
     phone_number,
     department_id,
     role,
@@ -278,6 +283,7 @@ const updateUser = async (req, res) => {
             getValue(municipality, currentUser.municipality),
             getValue(barangay, currentUser.barangay),
             getValue(street, currentUser.street),
+            getValue(company, currentUser.company),
             getValue(email, currentUser.email),
             getValue(phone_number, currentUser.phone_number),
             getValue(department_id, currentUser.department_id),
@@ -289,8 +295,8 @@ const updateUser = async (req, res) => {
           let updateQuery = `
           UPDATE users SET 
             first_name = ?, middle_name = ?, last_name = ?, gender = ?, birth_date = ?,
-            region = ?, province = ?, municipality = ?, barangay = ?, street = ?, 
-            email = ?, phone_number = ?, department_id = ?, role = ?, branch = ?, salary = ?
+            region = ?, province = ?, municipality = ?, barangay = ?, street = ?,  company = ?,
+            email = ?,  phone_number = ?, department_id = ?, role = ?, branch = ?, salary = ?
         `;
 
           if (password) {
@@ -346,7 +352,7 @@ const updateUser = async (req, res) => {
   }
 };
 
-const deleteUser = (req, res) => {
+const deleteUser = async (req, res) => {
   const { id } = req.params;
 
   if (!id) {
@@ -355,15 +361,14 @@ const deleteUser = (req, res) => {
       .json({ success: false, message: "Invalid user ID." });
   }
 
-  const sqlGetImage = "SELECT image_file_name FROM users WHERE id = ?";
+  const sqlGetUser = "SELECT image_file_name FROM users WHERE id = ?";
 
-  db.query(sqlGetImage, [id], (err, results) => {
+  db.query(sqlGetUser, [id], async (err, results) => {
     if (err) {
-      console.error("Error fetching user image:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Database error while retrieving image.",
-      });
+      console.error("Error fetching user data:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error." });
     }
 
     if (results.length === 0) {
@@ -374,36 +379,40 @@ const deleteUser = (req, res) => {
 
     const imageFileName = results[0].image_file_name;
 
+    const zk = new Zkteco("172.16.1.6", 4370, 10000, 4000);
+    try {
+      await zk.createSocket();
+
+      await zk.deleteUser(id);
+
+      await zk.disconnect();
+    } catch (zkErr) {
+      console.error("Error deleting user from biometric device:", zkErr);
+    }
+
     const sqlDelete = "DELETE FROM users WHERE id = ?";
 
     db.query(sqlDelete, [id], (err, result) => {
       if (err) {
-        console.error("Error deleting user:", err);
+        console.error("Error deleting user from DB:", err);
         return res
           .status(500)
-          .json({ success: false, message: "Database error while deleting." });
-      }
-
-      if (result.affectedRows === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found." });
+          .json({ success: false, message: "Database error." });
       }
 
       if (imageFileName) {
-        const imagePath = path.join(__dirname, "../uploads/", imageFileName);
-
-        fs.unlink(imagePath, (err) => {
-          if (err && err.code !== "ENOENT") {
-            console.error("Error deleting user image:", err);
-            return res
-              .status(500)
-              .json({ success: false, message: "Error deleting user image." });
+        const filePath = path.join(__dirname, "../uploads/", imageFileName);
+        fs.unlink(filePath, (unlinkErr) => {
+          if (unlinkErr && unlinkErr.code !== "ENOENT") {
+            console.error("Error deleting image file:", unlinkErr);
           }
         });
       }
 
-      res.json({ success: true, message: "User deleted successfully." });
+      res.json({
+        success: true,
+        message: "User deleted from DB and biometrics.",
+      });
     });
   });
 };

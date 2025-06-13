@@ -1262,7 +1262,7 @@ const HRPayroll = () => {
             className={styles["add-payroll-button"]}
             onClick={toggleAddModal}
           >
-            Add Payroll
+            Run Payroll
           </button>
         </div>
         <div className={styles["filter-container"]} ref={filterRef}>

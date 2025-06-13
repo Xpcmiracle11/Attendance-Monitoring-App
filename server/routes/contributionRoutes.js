@@ -7,4 +7,5 @@ const router = express.Router();
 
 router.get("/contributions", getContributions);
 router.put("/update-contribution/:id", updateContribution);
+
 module.exports = router;

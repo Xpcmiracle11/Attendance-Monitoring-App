@@ -72,6 +72,7 @@ const HRUsers = () => {
     municipality: null,
     barangay: null,
     street: "",
+    company: "",
     email: "",
     phoneNumber: "",
     departmentId: null,
@@ -93,6 +94,7 @@ const HRUsers = () => {
     municipality: "",
     barangay: "",
     street: "",
+    company: "",
     email: "",
     phoneNumber: "",
     departmentId: "",
@@ -122,6 +124,7 @@ const HRUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
   const filteredUsers = users
     .filter((user) => {
       const userName = (user.full_name || "").toLowerCase();
@@ -410,6 +413,7 @@ const HRUsers = () => {
       barangay: "",
       street: "",
       email: "",
+      company: "",
       phoneNumber: "",
       departmentId: "",
       role: "",
@@ -435,6 +439,7 @@ const HRUsers = () => {
       municipality: "",
       barangay: "",
       street: "",
+      company: "",
       email: "",
       phoneNumber: "",
       departmentId: "",
@@ -456,6 +461,7 @@ const HRUsers = () => {
       municipality: "",
       barangay: "",
       street: "",
+      company: "",
       email: "",
       phoneNumber: "",
       departmentId: "",
@@ -469,14 +475,14 @@ const HRUsers = () => {
     });
   };
 
-  const salaryTypeOptions = [
+  const companyOptions = [
     {
-      value: "Monthly",
-      label: "Monthly",
+      value: "EHD",
+      label: "EHD",
     },
     {
-      value: "Daily",
-      label: "Daily",
+      value: "PACK",
+      label: "PACK",
     },
   ];
 
@@ -698,6 +704,10 @@ const HRUsers = () => {
         newErrors.barangay = "Barangay is required.";
         hasError = true;
       }
+      if (!usersData.company) {
+        newErrors.company = "Company is required";
+        hasError = true;
+      }
     } else if (step === 3) {
       if (!usersData.departmentId) {
         newErrors.departmentId = "Department is required.";
@@ -769,6 +779,7 @@ const HRUsers = () => {
       formData.append("municipality", usersData.municipality.label);
       formData.append("barangay", usersData.barangay.label);
       formData.append("street", usersData.street);
+      formData.append("company", usersData.company);
       formData.append("email", usersData.email);
       formData.append("phone_number", usersData.phoneNumber);
       formData.append("department_id", usersData.departmentId);
@@ -803,6 +814,7 @@ const HRUsers = () => {
             municipality: usersData.municipality,
             barangay: usersData.barangay,
             street: usersData.street,
+            company: usersData.company,
             email: usersData.email,
             phone_number: usersData.phoneNumber,
             department_id: usersData.departmentId,
@@ -886,6 +898,7 @@ const HRUsers = () => {
         ? { value: selectedBarangay.name, label: selectedBarangay.name }
         : null,
       street: user?.street || "",
+      company: user?.company || "",
       email: user?.email || "",
       phoneNumber: user?.phone_number || "",
       departmentId: user?.department_id || "",
@@ -916,6 +929,7 @@ const HRUsers = () => {
       municipality: "",
       barangay: "",
       street: "",
+      company: "",
       email: "",
       phoneNumber: "",
       departmentId: "",
@@ -937,6 +951,7 @@ const HRUsers = () => {
       municipality: "",
       barangay: "",
       street: "",
+      company: "",
       email: "",
       phoneNumber: "",
       departmentId: "",
@@ -968,6 +983,7 @@ const HRUsers = () => {
       formData.append("municipality", usersData.municipality?.label || "");
       formData.append("barangay", usersData.barangay?.label || "");
       formData.append("street", usersData.street);
+      formData.append("company", usersData.company);
       formData.append("email", usersData.email);
       formData.append("phone_number", usersData.phoneNumber);
       formData.append("department_id", usersData.departmentId || "");
@@ -2296,6 +2312,99 @@ const HRUsers = () => {
                       onChange={handleInputChange}
                     />
                   </label>
+                  <label className={styles.label} htmlFor="company">
+                    Company
+                    <Select
+                      className={`${styles.input} ${
+                        errors.company ? styles["error-input"] : ""
+                      }`}
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderColor: state.isFocused
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
+                          boxShadow: state.isFocused
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          "&:hover": {
+                            borderColor: "var(--text-secondary)",
+                            boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                          },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                      }}
+                      options={companyOptions}
+                      placeholder="Select Company"
+                      name="company"
+                      id="company"
+                      value={companyOptions.find(
+                        (option) => option.value === usersData.company
+                      )}
+                      onChange={(selectedOption) =>
+                        handleInputChange(null, "company", selectedOption.value)
+                      }
+                    />
+                    {errors.company && (
+                      <p className={styles["error-message"]}>
+                        {errors.company}
+                      </p>
+                    )}
+                  </label>
                 </div>
               )}
               {step === 3 && (
@@ -2925,7 +3034,8 @@ const HRUsers = () => {
                       <p className={styles["error-message"]}>{errors.region}</p>
                     )}
                   </label>
-                  <label className={styles.label} htmlFor="municipality">
+                  <label className={styles.label} htmlFor="province">
+                    Province
                     <Select
                       className={`${styles.input} ${
                         errors.province ? styles["error-input"] : ""
@@ -3253,6 +3363,99 @@ const HRUsers = () => {
                       onChange={handleInputChange}
                     />
                   </label>
+                  <label className={styles.label} htmlFor="company">
+                    Company
+                    <Select
+                      className={`${styles.input} ${
+                        errors.company ? styles["error-input"] : ""
+                      }`}
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderColor: state.isFocused
+                            ? "var(--text-secondary)"
+                            : "var(--borders)",
+                          boxShadow: state.isFocused
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : state.isHovered
+                            ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                            : "none",
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          "&:hover": {
+                            borderColor: "var(--text-secondary)",
+                            boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                          },
+                          transition: "all 0.3s ease-in-out",
+                          cursor: "pointer",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          backgroundColor: isDarkMode
+                            ? "var(--cards)"
+                            : "var(--background)",
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                          border: `1px solid ${
+                            isDarkMode ? "var(--borders)" : "var(--borders)"
+                          }`,
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected
+                            ? isDarkMode
+                              ? "#333333"
+                              : "#e9ecef"
+                            : state.isFocused
+                            ? isDarkMode
+                              ? "#2a2a2a"
+                              : "#f8f9fa"
+                            : base.backgroundColor,
+                          color: state.isSelected
+                            ? isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)"
+                            : base.color,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                          },
+                        }),
+                        singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)",
+                        }),
+                        placeholder: (base) => ({
+                          ...base,
+                          color: isDarkMode
+                            ? "var(--text-secondary)"
+                            : "var(--text-secondary)",
+                        }),
+                      }}
+                      options={companyOptions}
+                      placeholder="Select Company"
+                      name="company"
+                      id="company"
+                      value={companyOptions.find(
+                        (option) => option.value === usersData.company
+                      )}
+                      onChange={(selectedOption) =>
+                        handleInputChange(null, "company", selectedOption.value)
+                      }
+                    />
+                    {errors.company && (
+                      <p className={styles["error-message"]}>
+                        {errors.company}
+                      </p>
+                    )}
+                  </label>
                 </div>
               )}
               {step === 3 && (
@@ -3576,7 +3779,11 @@ const HRUsers = () => {
               <div className={styles["modal-view-profile-image-container"]}>
                 <img
                   className={styles["modal-view-profile-image"]}
-                  src={selectedUser.image_file_path}
+                  src={
+                    selectedUser.image_file_path
+                      ? selectedUser.image_file_path
+                      : userIcon
+                  }
                   alt="Profile"
                 />
               </div>
@@ -3671,9 +3878,7 @@ const HRUsers = () => {
                     styles["modal-view-user-information-label-container"]
                   }
                 >
-                  <p className={styles["modal-view-user-label"]}>
-                    Salary and Salary Type
-                  </p>
+                  <p className={styles["modal-view-user-label"]}>Salary</p>
                   <p className={styles["modal-view-user-information"]}>
                     ₱{selectedUser.salary}
                   </p>
