@@ -128,7 +128,6 @@ const deleteDevice = (req, res) => {
         .status(404)
         .json({ success: false, message: "Device not found." });
     }
-
     res.json({ success: true, message: "Device deleted successfully." });
   });
 };

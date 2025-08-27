@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
+import Calendar from "../../Calendar";
 import styles from "../../../assets/styles/HRPayroll.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import checkIcon from "../../../assets/images/check-icon.svg";
@@ -68,9 +69,12 @@ const HRPayroll = () => {
     basicPayDays: 0,
     basicPayRate: 0,
     basicPayTotal: 0,
-    holidayDays: 0,
-    holidayRate: 0,
-    holidayTotal: 0,
+    legalHolidayDays: 0,
+    legalHolidayRate: 0,
+    legalHolidayTotal: 0,
+    specialHolidayDays: 0,
+    specialHolidayRate: 0,
+    specialHolidayTotal: 0,
     adjustmentDays: 0,
     adjustmentRate: 0,
     adjustmentTotal: 0,
@@ -130,9 +134,12 @@ const HRPayroll = () => {
     basicPayDays: 0,
     basicPayRate: 0,
     basicPayTotal: 0,
-    holidayDays: 0,
-    holidayRate: 0,
-    holidayTotal: 0,
+    legalHolidayDays: 0,
+    legalHolidayRate: 0,
+    legalHolidayTotal: 0,
+    specialHolidayDays: 0,
+    specialHolidayRate: 0,
+    specialHolidayTotal: 0,
     adjustmentDays: 0,
     adjustmentRate: 0,
     adjustmentTotal: 0,
@@ -601,7 +608,14 @@ const HRPayroll = () => {
 
       const totals = {
         basicPayTotal: calculateTotal("basicPayDays", "basicPayRate"),
-        holidayTotal: calculateTotal("holidayDays", "holidayRate"),
+        legalHolidayTotal: calculateTotal(
+          "legalHolidayDays",
+          "legalHolidayRate"
+        ),
+        specialHolidayTotal: calculateTotal(
+          "specialHolidayDays",
+          "specialHolidayRate"
+        ),
         adjustmentTotal: calculateTotal("adjustmentDays", "adjustmentRate"),
         leaveTotal: calculateTotal("leaveDays", "leaveRate"),
         regularOtTotal: calculateTotal("regularOtHours", "regularOtRate"),
@@ -772,15 +786,20 @@ const HRPayroll = () => {
   const toggleEditModal = (payroll = null) => {
     setSelectedPayroll(payroll);
     setPayrollsData({
+      fullName: payroll?.full_name || "",
+      dateAttended: payroll?.date_attended || "",
       payrollPeriod: payroll?.payroll_period || "",
       periodStart: payroll?.payroll_start || "",
       periodEnd: payroll?.payroll_end || "",
       basicPayDays: payroll?.basic_pay_days || 0,
       basicPayRate: payroll?.basic_pay_rate || 0,
       basicPayTotal: payroll?.basic_pay_total || 0,
-      holidayDays: payroll?.holiday_days || 0,
-      holidayRate: payroll?.holiday_rate || 0,
-      holidayTotal: payroll?.holiday_total || 0,
+      legalHolidayDays: payroll?.legal_holiday_days || 0,
+      legalHolidayRate: payroll?.legal_holiday_rate || 0,
+      legalHolidayTotal: payroll?.legal_holiday_total || 0,
+      specialHolidayDays: payroll?.special_holiday_days || 0,
+      specialHolidayRate: payroll?.special_holiday_rate || 0,
+      specialHolidayTotal: payroll?.special_holiday_total || 0,
       adjustmentDays: payroll?.adjustment_days || 0,
       adjustmentRate: payroll?.adjustment_rate || 0,
       adjustmentTotal: payroll?.adjustment_total || 0,
@@ -840,9 +859,12 @@ const HRPayroll = () => {
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       adjustmentDays: "",
       adjustmentRate: "",
       adjustmentTotal: "",
@@ -900,15 +922,20 @@ const HRPayroll = () => {
     setIsEditModalOpen(false);
     setSelectedPayroll(null);
     setPayrollsData({
+      fullName: "",
+      dateAttended: "",
       payrollPeriod: "",
       periodStart: "",
       periodEnd: "",
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       managementBonusTotal: "",
       thirteenthMonthTotal: "",
       regularOtHours: "",
@@ -961,9 +988,12 @@ const HRPayroll = () => {
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       managementBonusTotal: "",
       thirteenthMonthTotal: "",
       regularOtHours: "",
@@ -1034,9 +1064,12 @@ const HRPayroll = () => {
           basic_pay_days: payrollsData.basicPayDays,
           basic_pay_rate: payrollsData.basicPayRate,
           basic_pay_total: payrollsData.basicPayTotal,
-          holiday_days: payrollsData.holidayDays,
-          holiday_rate: payrollsData.holidayRate,
-          holiday_total: payrollsData.holidayTotal,
+          legal_holiday_days: payrollsData.legalHolidayDays,
+          legal_holiday_rate: payrollsData.legalHolidayRate,
+          legal_holiday_total: payrollsData.legalHolidayTotal,
+          special_holiday_days: payrollsData.specialHolidayDays,
+          special_holiday_rate: payrollsData.specialHolidayRate,
+          special_holiday_total: payrollsData.specialHolidayTotal,
           management_bonus_total: payrollsData.managementBonusTotal,
           thirteenth_month_total: payrollsData.thirteenthMonthTotal,
           regular_ot_hours: payrollsData.regularOtHours,
@@ -1092,9 +1125,12 @@ const HRPayroll = () => {
                   basic_pay_days: payrollsData.basicPayDays,
                   basic_pay_rate: payrollsData.basicPayRate,
                   basic_pay_total: payrollsData.basicPayTotal,
-                  holiday_days: payrollsData.holidayDays,
-                  holiday_rate: payrollsData.holidayRate,
-                  holiday_total: payrollsData.holidayTotal,
+                  legal_holiday_days: payrollsData.legalHolidayDays,
+                  legal_holiday_rate: payrollsData.legalHolidayRate,
+                  legal_holiday_total: payrollsData.legalHolidayTotal,
+                  special_holiday_days: payrollsData.specialHolidayDays,
+                  special_holiday_rate: payrollsData.specialHolidayRate,
+                  special_holiday_total: payrollsData.specialHolidayTotal,
                   management_bonus_total: payrollsData.managementBonusTotal,
                   thirteenth_month_total: payrollsData.thirteenthMonthTotal,
                   regular_ot_hours: payrollsData.regularOtHours,
@@ -2078,18 +2114,25 @@ const HRPayroll = () => {
                 />
               </button>
             </div>
+            <div className={styles["payroll-employee-name-container"]}>
+              <h1 className={styles["payroll-employee-name"]}>
+                {payrollsData.fullName}
+              </h1>
+            </div>
             <form
               className={styles["modal-body-container"]}
               onSubmit={handleEditPayroll}
             >
               <div className={styles["payroll-table-container"]}>
+                <Calendar dateAttended={payrollsData.dateAttended} />
+
                 <table className={styles.table}>
                   <thead className={styles.thead}>
                     <tr className={styles.htr}>
                       <th className={`${styles.pth} ${styles["pth-label"]}`}>
                         Additional
                       </th>
-                      <th className={styles.pth}>No. of Days</th>
+                      <th className={styles.pth}>No. of Hours</th>
                       <th className={styles.pth}>Rate</th>
                       <th className={styles.pth}>Total</th>
                     </tr>
@@ -2127,13 +2170,13 @@ const HRPayroll = () => {
                       </td>
                     </tr>
                     <tr className={styles.htr}>
-                      <th className={styles.pth}>Holiday</th>
+                      <th className={styles.pth}>Legal Holiday</th>
                       <td className={styles.ptd}>
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayDays"
-                          value={payrollsData.holidayDays || 0}
+                          name="legalHolidayDays"
+                          value={payrollsData.legalHolidayDays || 0}
                           onChange={handleInputChange}
                         />
                       </td>
@@ -2141,8 +2184,8 @@ const HRPayroll = () => {
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayRate"
-                          value={payrollsData.holidayRate || 0}
+                          name="legalHolidayRate"
+                          value={payrollsData.legalHolidayRate || 0}
                           onChange={handleInputChange}
                         />
                       </td>
@@ -2150,9 +2193,40 @@ const HRPayroll = () => {
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayTotal"
+                          name="legalHolidayTotal"
                           onChange={handleInputChange}
-                          value={payrollsData.holidayTotal || 0}
+                          value={payrollsData.legalHolidayTotal || 0}
+                          readOnly
+                        />
+                      </td>
+                    </tr>
+                    <tr className={styles.htr}>
+                      <th className={styles.pth}>Special Holiday</th>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayDays"
+                          value={payrollsData.specialHolidayDays || 0}
+                          onChange={handleInputChange}
+                        />
+                      </td>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayRate"
+                          value={payrollsData.specialHolidayRate || 0}
+                          onChange={handleInputChange}
+                        />
+                      </td>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayTotal"
+                          onChange={handleInputChange}
+                          value={payrollsData.specialHolidayTotal || 0}
                           readOnly
                         />
                       </td>

@@ -54,6 +54,7 @@ const HRTrucks = () => {
   const [isEditHovered, setIsEditHovered] = useState(null);
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
   const [trucksData, setTrucksData] = useState({
+    driverName: "",
     renewalMonth: "",
     plateNumber: "",
     truckType: "",
@@ -72,6 +73,7 @@ const HRTrucks = () => {
     registrationDate: "",
   });
   const [errors, setErrors] = useState({
+    driverName: "",
     renewalMonth: "",
     plateNumber: "",
     truckType: "",
@@ -357,6 +359,7 @@ const HRTrucks = () => {
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -377,6 +380,7 @@ const HRTrucks = () => {
   const closeAddModal = () => {
     setIsAddModalOpen(false);
     setTrucksData({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -393,6 +397,7 @@ const HRTrucks = () => {
       registeredOwner: "",
     });
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -497,9 +502,11 @@ const HRTrucks = () => {
       }));
     }
   };
+
   const handleAddTruck = async (e) => {
     e.preventDefault();
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -519,6 +526,12 @@ const HRTrucks = () => {
 
     let hasError = false;
 
+    if (!trucksData.driverName.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        driverName: "Driver is required.",
+      }));
+    }
     if (!trucksData.plateNumber.trim()) {
       setErrors((prev) => ({
         ...prev,
@@ -635,6 +648,7 @@ const HRTrucks = () => {
 
     try {
       const response = await axios.post(`${API_BASE_URL}/insert-truck`, {
+        driver_name: trucksData.driverName,
         plate_number: trucksData.plateNumber,
         renewal_month: trucksData.renewalMonth,
         truck_type: trucksData.truckType,
@@ -654,6 +668,7 @@ const HRTrucks = () => {
         setTrucks((prevTrucks) => [
           ...prevTrucks,
           {
+            driver_name: trucksData.driverName,
             plate_number: trucksData.plateNumber,
             renewal_month: trucksData.renewalMonth,
             truck_type: trucksData.truckType,
@@ -692,6 +707,7 @@ const HRTrucks = () => {
   const toggleEditModal = (truck = null) => {
     setSelectedTruck(truck);
     setTrucksData({
+      driverName: truck?.driver_name || "",
       renewalMonth: truck?.renewal_month || "",
       plateNumber: truck?.plate_number || "",
       truckType: truck?.truck_type || "",
@@ -709,6 +725,7 @@ const HRTrucks = () => {
     });
     setIsEditModalOpen(true);
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -730,6 +747,7 @@ const HRTrucks = () => {
     setIsEditModalOpen(false);
     setSelectedTruck(null);
     setTrucksData({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -746,6 +764,7 @@ const HRTrucks = () => {
       registeredOwner: "",
     });
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -768,6 +787,7 @@ const HRTrucks = () => {
     e.preventDefault();
 
     setErrors({
+      driverName: "",
       renewalMonth: "",
       plateNumber: "",
       truckType: "",
@@ -794,7 +814,12 @@ const HRTrucks = () => {
     }
 
     let hasError = false;
-
+    if (!trucksData.driverName.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        driverName: "Driver is required.",
+      }));
+    }
     if (!trucksData.plateNumber.trim()) {
       setErrors((prev) => ({
         ...prev,
@@ -913,6 +938,7 @@ const HRTrucks = () => {
       const response = await axios.put(
         `${API_BASE_URL}/update-truck/${selectedTruck.id}`,
         {
+          driver_name: trucksData.driverName,
           renewal_month: trucksData.renewalMonth,
           plate_number: trucksData.plateNumber,
           truck_type: trucksData.truckType,
@@ -935,6 +961,7 @@ const HRTrucks = () => {
             truck.id === selectedTruck.id
               ? {
                   ...truck,
+                  driver_name: trucksData.driverName,
                   renewal_month: trucksData.renewalMonth,
                   plate_number: trucksData.plateNumber,
                   truck_type: trucksData.truckType,
@@ -1575,7 +1602,7 @@ const HRTrucks = () => {
               {paginatedTrucks.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="1"
+                    colSpan="16"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
                     No trucks found.

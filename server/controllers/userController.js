@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const db = require("../config/db");
 const ZKLib = require("zklib-js");
 const Zkteco = require("zkteco-js");
+require("dotenv").config();
 
 const getUsers = (req, res) => {
   const sql = `
@@ -49,7 +50,7 @@ const getUsers = (req, res) => {
 
     results.forEach((user) => {
       user.image_file_path = user.image_file_name
-        ? `http://localhost:8080/uploads/${user.image_file_name}`
+        ? `${process.env.API_BASE_URL}/uploads/${user.image_file_name}`
         : null;
     });
 
@@ -95,8 +96,7 @@ const insertUser = async (req, res) => {
           .json({ success: false, message: "Email already exists." });
       }
 
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       const sqlInsert = `
         INSERT INTO users (
@@ -139,26 +139,6 @@ const insertUser = async (req, res) => {
           const userId = result.insertId;
           let newFileName = null;
 
-          const grossMonthly = parseFloat(salary) * 26;
-          const sss = 180;
-          const philhealth = (grossMonthly * 0.05).toFixed(2);
-          const pagibig = 200;
-
-          const contributionSql = `
-              INSERT INTO contributions (user_id, sss, philhealth, pagibig)
-              VALUES (?, ?, ?, ?)
-            `;
-
-          db.query(
-            contributionSql,
-            [userId, sss, philhealth, pagibig],
-            (contribErr) => {
-              if (contribErr) {
-                console.error("Error inserting contributions:", contribErr);
-              }
-            }
-          );
-
           if (req.file) {
             const fileExt = path.extname(req.file.originalname);
             newFileName = `${first_name}_${userId}${fileExt}`;
@@ -181,23 +161,47 @@ const insertUser = async (req, res) => {
             });
           }
 
-          const zk = new ZKLib("172.16.1.6", 4370, 10000, 4000);
+          const deviceSql = "SELECT ip_address, port FROM biometric_devices";
+          db.query(deviceSql, async (err, devices) => {
+            if (err) {
+              console.error("Error fetching devices:", err);
+              return res
+                .status(500)
+                .json({ success: false, message: "Device fetch error" });
+            }
 
-          try {
-            await zk.createSocket();
+            const shortName = first_name.split(" ")[0];
 
-            const fullName = `${first_name} ${last_name}`;
-            await zk.setUser(userId, userId.toString(), fullName, "1", "0");
+            for (const device of devices) {
+              const zk = new ZKLib(
+                device.ip_address,
+                parseInt(device.port),
+                10000,
+                4000
+              );
+              try {
+                await zk.createSocket();
+                await zk.setUser(
+                  userId,
+                  userId.toString(),
+                  shortName,
+                  "1",
+                  "0"
+                );
+                await zk.disconnect();
+              } catch (zkErr) {
+                console.error(
+                  `Failed to register on device ${device.ip_address}:`,
+                  zkErr
+                );
+              }
+            }
 
-            await zk.disconnect();
-          } catch (zkErr) {
-            console.error("Failed to register on biometric device:", zkErr);
-          }
-
-          return res.json({
-            success: true,
-            message: "User added successfully with biometric registration",
-            image_file_name: newFileName,
+            return res.json({
+              success: true,
+              message: "User added successfully with biometric registration",
+              image_file_name: newFileName,
+            });
           });
         }
       );
@@ -362,6 +366,8 @@ const deleteUser = async (req, res) => {
   }
 
   const sqlGetUser = "SELECT image_file_name FROM users WHERE id = ?";
+  const sqlGetDevices = "SELECT ip_address, port FROM biometric_devices";
+  const sqlDelete = "DELETE FROM users WHERE id = ?";
 
   db.query(sqlGetUser, [id], async (err, results) => {
     if (err) {
@@ -379,39 +385,52 @@ const deleteUser = async (req, res) => {
 
     const imageFileName = results[0].image_file_name;
 
-    const zk = new Zkteco("172.16.1.6", 4370, 10000, 4000);
-    try {
-      await zk.createSocket();
-
-      await zk.deleteUser(id);
-
-      await zk.disconnect();
-    } catch (zkErr) {
-      console.error("Error deleting user from biometric device:", zkErr);
-    }
-
-    const sqlDelete = "DELETE FROM users WHERE id = ?";
-
-    db.query(sqlDelete, [id], (err, result) => {
+    db.query(sqlGetDevices, async (err, devices) => {
       if (err) {
-        console.error("Error deleting user from DB:", err);
+        console.error("Error fetching biometric devices:", err);
         return res
           .status(500)
-          .json({ success: false, message: "Database error." });
+          .json({ success: false, message: "Error fetching devices." });
       }
 
-      if (imageFileName) {
-        const filePath = path.join(__dirname, "../uploads/", imageFileName);
-        fs.unlink(filePath, (unlinkErr) => {
-          if (unlinkErr && unlinkErr.code !== "ENOENT") {
-            console.error("Error deleting image file:", unlinkErr);
-          }
+      for (const device of devices) {
+        const { ip_address, port } = device;
+        const zk = new Zkteco(ip_address, port, 10000, 4000);
+
+        try {
+          await zk.createSocket();
+          await zk.deleteUser(id);
+          await zk.disconnect();
+          console.log(`User ${id} deleted from device ${ip_address}`);
+        } catch (zkErr) {
+          console.error(
+            `Error deleting user ${id} from ${ip_address}:`,
+            zkErr.message
+          );
+        }
+      }
+
+      db.query(sqlDelete, [id], (err, result) => {
+        if (err) {
+          console.error("Error deleting user from DB:", err);
+          return res
+            .status(500)
+            .json({ success: false, message: "Database error." });
+        }
+
+        if (imageFileName) {
+          const filePath = path.join(__dirname, "../uploads/", imageFileName);
+          fs.unlink(filePath, (unlinkErr) => {
+            if (unlinkErr && unlinkErr.code !== "ENOENT") {
+              console.error("Error deleting image file:", unlinkErr);
+            }
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "User deleted from DB and all biometric devices.",
         });
-      }
-
-      res.json({
-        success: true,
-        message: "User deleted from DB and biometrics.",
       });
     });
   });

@@ -23,6 +23,7 @@ import autoTable from "jspdf-autotable";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
 const ITDevice = () => {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState("");
@@ -80,7 +81,7 @@ const ITDevice = () => {
 
   const filteredDevices = devices
     .filter((device) => {
-      const driverName = (device.driver_name || "").toLowerCase();
+      const driverName = (device.ip_address || "").toLowerCase();
       const matchesSearch = driverName.includes(search.toLowerCase());
 
       const deviceDate = device.created_at
@@ -97,10 +98,10 @@ const ITDevice = () => {
         return new Date(a.created_at) - new Date(b.created_at);
       if (sortOrder === "date-desc")
         return new Date(b.created_at) - new Date(a.created_at);
-      if (sortOrder === "driver_name-asc")
-        return a.driver_name.localeCompare(b.driver_name);
-      if (sortOrder === "driver_name-desc")
-        return b.driver_name.localeCompare(a.driver_name);
+      if (sortOrder === "ip_address-asc")
+        return a.ip_address.localeCompare(b.ip_address);
+      if (sortOrder === "ip_address-desc")
+        return b.ip_address.localeCompare(a.ip_address);
       return 0;
     });
 
@@ -806,8 +807,8 @@ const ITDevice = () => {
                           id="a-z"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "driver_name-asc"}
-                          onChange={() => setTempSortOrder("driver_name-asc")}
+                          checked={tempSortOrder === "ip_address-asc"}
+                          onChange={() => setTempSortOrder("ip_address-asc")}
                         />
                         A-Z
                       </label>
@@ -817,8 +818,8 @@ const ITDevice = () => {
                           id="z-a"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "driver_name-desc"}
-                          onChange={() => setTempSortOrder("driver_name-desc")}
+                          checked={tempSortOrder === "ip_address-desc"}
+                          onChange={() => setTempSortOrder("ip_address-desc")}
                         />
                         Z-A
                       </label>

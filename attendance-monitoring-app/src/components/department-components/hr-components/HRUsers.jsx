@@ -107,6 +107,7 @@ const HRUsers = () => {
     apiError: "",
     timeErrors: {},
   });
+
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
@@ -114,7 +115,10 @@ const HRUsers = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/users`);
       if (response.data.success) {
-        setUsers(response.data.data);
+        const admins = response.data.data.filter(
+          (user) => user.role !== "Manager" && user.role !== "Corporate"
+        );
+        setUsers(admins);
       }
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -616,6 +620,21 @@ const HRUsers = () => {
       });
   }, []);
 
+  const roleOptions = [
+    {
+      value: "Admin",
+      label: "Admin",
+    },
+    {
+      value: "Crew",
+      label: "Crew",
+    },
+    {
+      value: "Driver",
+      label: "Driver",
+    },
+  ];
+
   const handleInputChange = (e, name, selectedOption) => {
     let value, fieldName;
 
@@ -704,11 +723,11 @@ const HRUsers = () => {
         newErrors.barangay = "Barangay is required.";
         hasError = true;
       }
+    } else if (step === 3) {
       if (!usersData.company) {
         newErrors.company = "Company is required";
         hasError = true;
       }
-    } else if (step === 3) {
       if (!usersData.departmentId) {
         newErrors.departmentId = "Department is required.";
         hasError = true;
@@ -717,12 +736,12 @@ const HRUsers = () => {
         newErrors.role = "Role is required.";
         hasError = true;
       }
-      if (!usersData.branch.trim()) {
-        newErrors.branch = "Branch is required.";
-        hasError = true;
-      }
       if (!usersData.salary.trim()) {
         newErrors.salary = "Salary is required.";
+        hasError = true;
+      }
+      if (!usersData.branch.trim()) {
+        newErrors.branch = "Branch is required.";
         hasError = true;
       }
       if (isAddModalOpen) {
@@ -843,6 +862,7 @@ const HRUsers = () => {
       setStep(1);
     }
   };
+
   const toggleEditModal = (user = null) => {
     setSelectedUser(user);
     const selectedRegion = regions.find(
@@ -1482,6 +1502,7 @@ const HRUsers = () => {
             <thead className={styles.thead}>
               <tr className={styles.htr}>
                 <th className={styles.th}>Name</th>
+                <th className={styles.th}>ID</th>
                 <th className={styles.th}>Gender</th>
                 <th className={styles.th}>Email</th>
                 <th className={styles.th}>Phone Number</th>
@@ -1510,9 +1531,10 @@ const HRUsers = () => {
                     </div>
                     {user.full_name}
                   </td>
+                  <td className={styles.td}>{user.id}</td>
                   <td className={styles.td}>{user.gender}</td>
                   <td className={styles.td}>{user.email}</td>
-                  <td className={styles.td}>{user.phone_number}</td>
+                  <td className={styles.td}>+{user.phone_number}</td>
                   <td className={styles.td}>{user.department_name}</td>
                   <td className={styles.td}>{user.role}</td>
                   <td className={styles.td}>{user.branch}</td>
@@ -1866,14 +1888,15 @@ const HRUsers = () => {
               )}
               {step === 2 && (
                 <div className={styles["label-input-container"]}>
-                  <label className={styles.label} htmlFor="email">
+                  <label className={styles.label} htmlFor="phone_number">
                     Phone Number
                     <PhoneInput
                       className={`${styles.input} ${
-                        errors.email ? styles["error-input"] : ""
+                        errors.phoneNumber ? styles["error-input"] : ""
                       }`}
                       country={"ph"}
                       name="phoneNumber"
+                      id="phone_number"
                       value={usersData.phoneNumber}
                       onChange={(value) =>
                         setUsersData((prevData) => ({
@@ -2312,6 +2335,10 @@ const HRUsers = () => {
                       onChange={handleInputChange}
                     />
                   </label>
+                </div>
+              )}
+              {step === 3 && (
+                <div className={styles["label-input-container"]}>
                   <label className={styles.label} htmlFor="company">
                     Company
                     <Select
@@ -2405,10 +2432,6 @@ const HRUsers = () => {
                       </p>
                     )}
                   </label>
-                </div>
-              )}
-              {step === 3 && (
-                <div className={styles["label-input-container"]}>
                   <label className={styles.label} htmlFor="department">
                     Department
                     <Select
@@ -2512,39 +2535,86 @@ const HRUsers = () => {
                       </p>
                     )}
                   </label>
-                  <label className={styles.label} htmlFor="role">
-                    Role
-                    <input
-                      className={`${styles.input} ${
-                        errors.role ? styles["error-input"] : ""
-                      }`}
-                      type="text"
-                      name="role"
-                      id="role"
-                      value={usersData.role}
-                      onChange={handleInputChange}
-                    />
-                    {errors.role && (
-                      <p className={styles["error-message"]}>{errors.role}</p>
-                    )}
-                  </label>
-                  <label className={styles.label} htmlFor="branch">
-                    Branch
-                    <input
-                      className={`${styles.input} ${
-                        errors.branch ? styles["error-input"] : ""
-                      }`}
-                      type="text"
-                      name="branch"
-                      id="branch"
-                      value={usersData.branch}
-                      onChange={handleInputChange}
-                    />
-                    {errors.branch && (
-                      <p className={styles["error-message"]}>{errors.branch}</p>
-                    )}
-                  </label>
                   <div className={styles["salary-input-details-container"]}>
+                    <label className={styles.label} htmlFor="role">
+                      Role
+                      <Select
+                        className={`${styles.input} ${
+                          errors.role ? styles["error-input"] : ""
+                        }`}
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            borderColor: state.isFocused
+                              ? "var(--text-secondary)"
+                              : "var(--borders)",
+                            boxShadow:
+                              state.isFocused || state.isHovered
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : "none",
+                            backgroundColor: isDarkMode
+                              ? "var(--cards)"
+                              : "var(--background)",
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                            cursor: "pointer",
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            backgroundColor: isDarkMode
+                              ? "var(--cards)"
+                              : "var(--background)",
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                            border: `1px solid ${
+                              isDarkMode ? "var(--borders)" : "var(--borders)"
+                            }`,
+                          }),
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isSelected
+                              ? isDarkMode
+                                ? "#333333"
+                                : "#e9ecef"
+                              : state.isFocused
+                              ? isDarkMode
+                                ? "#2a2a2a"
+                                : "#f8f9fa"
+                              : base.backgroundColor,
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                          }),
+                          singleValue: (base) => ({
+                            ...base,
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                          }),
+                          placeholder: (base) => ({
+                            ...base,
+                            color: isDarkMode
+                              ? "var(--text-secondary)"
+                              : "var(--text-secondary)",
+                          }),
+                        }}
+                        options={roleOptions}
+                        placeholder="Select Role"
+                        name="role"
+                        id="role"
+                        value={roleOptions.find(
+                          (option) => option.value === usersData.role
+                        )}
+                        onChange={(selectedOption) =>
+                          handleInputChange(null, "role", selectedOption.value)
+                        }
+                      />
+                      {errors.role && (
+                        <p className={styles["error-message"]}>{errors.role}</p>
+                      )}
+                    </label>
                     <label className={styles.label} htmlFor="salary">
                       Daily Salary
                       <input
@@ -2564,6 +2634,22 @@ const HRUsers = () => {
                       )}
                     </label>
                   </div>
+                  <label className={styles.label} htmlFor="branch">
+                    Branch
+                    <input
+                      className={`${styles.input} ${
+                        errors.branch ? styles["error-input"] : ""
+                      }`}
+                      type="text"
+                      name="branch"
+                      id="branch"
+                      value={usersData.branch}
+                      onChange={handleInputChange}
+                    />
+                    {errors.branch && (
+                      <p className={styles["error-message"]}>{errors.branch}</p>
+                    )}
+                  </label>
                   <label className={styles.label} htmlFor="password">
                     Password
                     <input
@@ -3139,8 +3225,10 @@ const HRUsers = () => {
                       isDisabled={!usersData.region}
                       placeholder="Select Province"
                     />
-                    {errors.region && (
-                      <p className={styles["error-message"]}>{errors.region}</p>
+                    {errors.province && (
+                      <p className={styles["error-message"]}>
+                        {errors.province}
+                      </p>
                     )}
                   </label>
                   <label className={styles.label} htmlFor="municipality">
@@ -3363,6 +3451,10 @@ const HRUsers = () => {
                       onChange={handleInputChange}
                     />
                   </label>
+                </div>
+              )}
+              {step === 3 && (
+                <div className={styles["label-input-container"]}>
                   <label className={styles.label} htmlFor="company">
                     Company
                     <Select
@@ -3456,10 +3548,6 @@ const HRUsers = () => {
                       </p>
                     )}
                   </label>
-                </div>
-              )}
-              {step === 3 && (
-                <div className={styles["label-input-container"]}>
                   <label className={styles.label} htmlFor="department">
                     Department
                     <Select
@@ -3546,12 +3634,9 @@ const HRUsers = () => {
                       placeholder="Select Department"
                       name="departmentId"
                       id="department"
-                      value={
-                        departmentOptions.find(
-                          (option) =>
-                            option.value === String(usersData.departmentId)
-                        ) || null
-                      }
+                      value={departmentOptions.find(
+                        (option) => option.value === usersData.departmentId
+                      )}
                       onChange={(selectedOption) =>
                         handleInputChange(
                           null,
@@ -3566,41 +3651,88 @@ const HRUsers = () => {
                       </p>
                     )}
                   </label>
-                  <label className={styles.label} htmlFor="role">
-                    Role
-                    <input
-                      className={`${styles.input} ${
-                        errors.role ? styles["error-input"] : ""
-                      }`}
-                      type="text"
-                      name="role"
-                      id="role"
-                      value={usersData.role}
-                      onChange={handleInputChange}
-                    />
-                    {errors.role && (
-                      <p className={styles["error-message"]}>{errors.role}</p>
-                    )}
-                  </label>
-                  <label className={styles.label} htmlFor="branch">
-                    Branch
-                    <input
-                      className={`${styles.input} ${
-                        errors.branch ? styles["error-input"] : ""
-                      }`}
-                      type="text"
-                      name="branch"
-                      id="branch"
-                      value={usersData.branch}
-                      onChange={handleInputChange}
-                    />
-                    {errors.branch && (
-                      <p className={styles["error-message"]}>{errors.branch}</p>
-                    )}
-                  </label>
                   <div className={styles["salary-input-details-container"]}>
+                    <label className={styles.label} htmlFor="role">
+                      Role
+                      <Select
+                        className={`${styles.input} ${
+                          errors.role ? styles["error-input"] : ""
+                        }`}
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            borderColor: state.isFocused
+                              ? "var(--text-secondary)"
+                              : "var(--borders)",
+                            boxShadow:
+                              state.isFocused || state.isHovered
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : "none",
+                            backgroundColor: isDarkMode
+                              ? "var(--cards)"
+                              : "var(--background)",
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                            cursor: "pointer",
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            backgroundColor: isDarkMode
+                              ? "var(--cards)"
+                              : "var(--background)",
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                            border: `1px solid ${
+                              isDarkMode ? "var(--borders)" : "var(--borders)"
+                            }`,
+                          }),
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isSelected
+                              ? isDarkMode
+                                ? "#333333"
+                                : "#e9ecef"
+                              : state.isFocused
+                              ? isDarkMode
+                                ? "#2a2a2a"
+                                : "#f8f9fa"
+                              : base.backgroundColor,
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                          }),
+                          singleValue: (base) => ({
+                            ...base,
+                            color: isDarkMode
+                              ? "var(--text-primary)"
+                              : "var(--text-primary)",
+                          }),
+                          placeholder: (base) => ({
+                            ...base,
+                            color: isDarkMode
+                              ? "var(--text-secondary)"
+                              : "var(--text-secondary)",
+                          }),
+                        }}
+                        options={roleOptions}
+                        placeholder="Select Role"
+                        name="role"
+                        id="role"
+                        value={roleOptions.find(
+                          (option) => option.value === usersData.role
+                        )}
+                        onChange={(selectedOption) =>
+                          handleInputChange(null, "role", selectedOption.value)
+                        }
+                      />
+                      {errors.role && (
+                        <p className={styles["error-message"]}>{errors.role}</p>
+                      )}
+                    </label>
                     <label className={styles.label} htmlFor="salary">
-                      Daily Salary
+                      Daily Salary{" "}
                       <input
                         className={`${styles.input} ${
                           errors.salary ? styles["error-input"] : ""
@@ -3618,6 +3750,22 @@ const HRUsers = () => {
                       )}
                     </label>
                   </div>
+                  <label className={styles.label} htmlFor="branch">
+                    Branch
+                    <input
+                      className={`${styles.input} ${
+                        errors.branch ? styles["error-input"] : ""
+                      }`}
+                      type="text"
+                      name="branch"
+                      id="branch"
+                      value={usersData.branch}
+                      onChange={handleInputChange}
+                    />
+                    {errors.branch && (
+                      <p className={styles["error-message"]}>{errors.branch}</p>
+                    )}
+                  </label>
                   <label className={styles.label} htmlFor="password">
                     Password
                     <input
@@ -3669,7 +3817,6 @@ const HRUsers = () => {
                     }
                     alt="Profile"
                   />
-
                   <div className={styles["profile-button-container"]}>
                     <button
                       className={styles["profile-image-button"]}

@@ -36,12 +36,6 @@
     "active": "activeAttendance"
   },
   {
-    "name": "Dispatch",
-    "path": "/dispatch",
-    "icon": "dispatch",
-    "active": "activeDispatch"
-  },
-  {
     "name": "Device",
     "path": "/device",
     "icon": "device",
@@ -54,9 +48,21 @@
     "active": "activePayroll"
   },
   {
-    "name": "Loan",
-    "path": "/loan",
-    "icon": "loan",
-    "active": "activeLoan"
+    "name": "Orders",
+    "path": "/orders",
+    "icon": "orders",
+    "active": "activeOrders"
+  },
+  {
+    "name": "DMR",
+    "path": "/dmr",
+    "icon": "dmr",
+    "active": "activeDmr"
+  },
+  {
+    "name": "Holiday",
+    "path": "/holiday",
+    "icon": "holiday",
+    "active": "activeHoliday"
   }
 ]

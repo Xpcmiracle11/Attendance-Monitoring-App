@@ -12,11 +12,12 @@ import Users from "./pages/Users";
 import Trucks from "./pages/Trucks";
 import Monitoring from "./pages/Monitoring";
 import Attendance from "./pages/Attendance";
-import Dispatch from "./pages/Dispatch";
 import Device from "./pages/Device";
 import Payroll from "./pages/Payroll";
-import Loan from "./pages/Loan";
 import Profile from "./pages/Profile";
+import Dmr from "./pages/Dmr";
+import Orders from "./pages/Orders";
+import Holiday from "./pages/Holiday";
 import Loading from "./components/Loading";
 import axios from "axios";
 const API_BASE_URL =
@@ -117,7 +118,9 @@ function App() {
         <Route
           path="/users"
           element={
-            <PrivateRoute allowedDepartments={["Human Resources"]}>
+            <PrivateRoute
+              allowedDepartments={["Human Resources", "IT Department"]}
+            >
               <Users />
             </PrivateRoute>
           }
@@ -149,14 +152,6 @@ function App() {
           }
         />
         <Route
-          path="/dispatch"
-          element={
-            <PrivateRoute allowedDepartments={["Operations"]}>
-              <Dispatch />
-            </PrivateRoute>
-          }
-        />
-        <Route
           path="/device"
           element={
             <PrivateRoute allowedDepartments={["IT Department"]}>
@@ -173,18 +168,36 @@ function App() {
           }
         />
         <Route
-          path="/loan"
-          element={
-            <PrivateRoute allowedDepartments={["Human Resources", "Finance"]}>
-              <Loan />
-            </PrivateRoute>
-          }
-        />
-        <Route
           path="/profile"
           element={
             <PrivateRoute>
               <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dmr"
+          element={
+            <PrivateRoute
+              allowedDepartments={["Human Resources", "Finance", "Operations"]}
+            >
+              <Dmr />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <Orders />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/holiday"
+          element={
+            <PrivateRoute allowedDepartments={["Human Resources"]}>
+              <Holiday />
             </PrivateRoute>
           }
         />

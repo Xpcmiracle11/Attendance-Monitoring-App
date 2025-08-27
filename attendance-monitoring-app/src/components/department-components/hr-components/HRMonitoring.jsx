@@ -14,7 +14,7 @@ const HRMonitoring = () => {
   const filterRef = useRef(null);
   const sortRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 100;
   const [tempFromDate, setTempFromDate] = useState("");
   const [tempToDate, setTempToDate] = useState("");
   const [sortOrder, setSortOrder] = useState("");
@@ -93,6 +93,7 @@ const HRMonitoring = () => {
 
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
+
   const handleSearchChange = (e) => setSearch(e.target.value);
   const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
   const toggleFilterDropdown = () => {

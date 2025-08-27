@@ -76,8 +76,8 @@ const HRAttendance = () => {
       const attendanceName = (attendance.full_name || "").toLowerCase();
       const matchesSearch = attendanceName.includes(search.toLowerCase());
 
-      const attendanceDate = attendance.created_at
-        ? new Date(attendance.created_at.split("T")[0])
+      const attendanceDate = attendance.clock_in
+        ? new Date(attendance.clock_in.split("T")[0])
         : new Date();
       const iswithinDateRange =
         (!appliedFromDate || attendanceDate >= new Date(appliedFromDate)) &&
@@ -139,9 +139,11 @@ const HRAttendance = () => {
   const tableColumn = [
     "ID",
     "Name",
-    "Day",
     "Clock In",
     "Clock Out",
+    "Number of Hours",
+    "Rate Per Hour",
+    "Salary",
     "Created At",
   ];
 
@@ -149,9 +151,14 @@ const HRAttendance = () => {
     const filteredData = data.map((item, index) => ({
       ID: index + 1,
       Name: item.full_name || "",
-      Day: item.day || "",
-      "Clock In": item.clock_in || "",
-      "Clock Out": item.clock_out || "",
+      "Clock In": item.clock_in_formatted || "",
+      "Clock Out": item.clock_out_formatted || "",
+      "Number of Hours":
+        item.duration && !item.duration.startsWith("-")
+          ? item.duration
+          : "00:00" || "",
+      "Rate Per Hour": item.rate || "",
+      Salary: Number(item.salary) > 0 ? item.salary : "00.00" || "",
       "Created At": formatDate(item.created_at),
     }));
 
@@ -179,9 +186,13 @@ const HRAttendance = () => {
     const tableRows = data.map((item) => [
       item.id || "",
       item.full_name || "",
-      item.day || "",
-      item.clock_in || "",
-      item.clock_out || "",
+      item.clock_in_formatted || "",
+      item.clock_out_formatted || "",
+      item.duration && !item.duration.startsWith("-")
+        ? item.duration
+        : "00:00" || "",
+      item.rate || "",
+      Number(item.salary) > 0 ? item.salary : "00.00" || "",
       formatDate(item.created_at),
     ]);
 
@@ -198,35 +209,52 @@ const HRAttendance = () => {
     const columnKeyMap = {
       ID: "id",
       Name: "full_name",
-      Day: "day",
-      "Clock In": "clock_in",
-      "Clock Out": "clock_out",
+      "Clock In": "clock_in_formatted",
+      "Clock Out": "clock_out_formatted",
+      "Number of Hours": "duration",
+      "Rate Per Hour": "rate",
+      Salary: "salary",
       "Created At": "created_at",
     };
+    const tableRows = [
+      new TableRow({
+        children: tableColumn.map(
+          (column) =>
+            new TableCell({
+              children: [new Paragraph({ text: column, bold: true })],
+            })
+        ),
+      }),
+      ...data.map((item) => {
+        return new TableRow({
+          children: tableColumn.map((column) => {
+            const key = columnKeyMap[column];
+            let value = item[key];
 
-    const tableRows = data.map((item) => {
-      return new TableRow({
-        children: tableColumn.map((column) => {
-          const key = columnKeyMap[column];
-          const value =
-            column === "Created At"
-              ? formatDate(item[key])
-              : item[key] != null
-              ? item[key].toString()
-              : "";
-          return new TableCell({
-            children: [new Paragraph(value)],
-          });
-        }),
-      });
-    });
+            if (column === "Number of Hours") {
+              value = value && !value.startsWith("-") ? value : "00:00";
+            } else if (column === "Salary") {
+              value = Number(value) > 0 ? value : "00.00";
+            } else if (column === "Created At") {
+              value = formatDate(item[key]);
+            } else {
+              value = value != null ? value.toString() : "";
+            }
+
+            return new TableCell({
+              children: [new Paragraph(value)],
+            });
+          }),
+        });
+      }),
+    ];
 
     const doc = new Document({
       sections: [
         {
           properties: {},
           children: [
-            new Paragraph("Exported Data"),
+            new Paragraph("Attendances Report"),
             new Table({ rows: tableRows }),
           ],
         },
@@ -245,8 +273,8 @@ const HRAttendance = () => {
     }
 
     const filteredData = attendances.filter((attendance) => {
-      const attendanceDate = attendance.created_at
-        ? new Date(attendance.created_at.split("T")[0])
+      const attendanceDate = attendance.clock_in
+        ? new Date(attendance.clock_in.split("T")[0])
         : new Date();
       return (
         (!exportFromDate || attendanceDate >= new Date(exportFromDate)) &&
@@ -832,10 +860,11 @@ const HRAttendance = () => {
             <thead className={styles.thead}>
               <tr className={styles.htr}>
                 <th className={styles.th}>Name</th>
-                <th className={styles.th}>Day</th>
                 <th className={styles.th}>Clock In</th>
                 <th className={styles.th}>Clock Out</th>
-                <th className={styles.th}>Date</th>
+                <th className={styles.th}>Number of Hours</th>
+                <th className={styles.th}>Rate Per Hour</th>
+                <th className={styles.th}>Salary</th>
                 <th className={styles.th}>Status</th>
                 <th className={styles.th}>Action</th>
               </tr>
@@ -846,20 +875,20 @@ const HRAttendance = () => {
                   <td className={styles.td}>
                     {index + 1}. {attendance.full_name}
                   </td>
-                  <td className={styles.td}>{attendance.day}</td>
                   <td className={styles.td}>{attendance.clock_in_formatted}</td>
                   <td className={styles.td}>
                     {attendance.clock_out_formatted}
                   </td>
                   <td className={styles.td}>
-                    {new Date(attendance.created_at).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                    {attendance.duration && !attendance.duration.startsWith("-")
+                      ? attendance.duration
+                      : "00:00"}
+                  </td>
+                  <td className={styles.td}>{attendance.rate}</td>
+                  <td className={styles.td}>
+                    {Number(attendance.salary) > 0
+                      ? attendance.salary
+                      : "00.00"}
                   </td>
                   <td className={styles.td}>{attendance.status}</td>
                   <td className={styles.td}>

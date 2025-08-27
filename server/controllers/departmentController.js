@@ -3,7 +3,7 @@ const db = require("../config/db");
 const getDepartments = (req, res) => {
   const sql = `
     SELECT id, name, description, 
-           DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at  
+    DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at  
     FROM departments 
     ORDER BY created_at ASC`;
 

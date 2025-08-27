@@ -55,7 +55,7 @@
   flex-direction: row;
   gap: 0.5rem;
   color: var(--text-secondary);
-  padding: 1rem 1rem 1rem 1.5rem;
+  padding: 0.5rem 1rem 0.5rem 1rem;
 }
 .navigation-option:hover {
   background-color: var(--borders);
@@ -81,6 +81,7 @@
 }
 .navigation-icon {
   width: 25px;
+  padding: 2px;
 }
 [data-theme="dark"] .inactive-icon {
   filter: brightness(0) invert(77%) sepia(6%) saturate(245%) hue-rotate(165deg);

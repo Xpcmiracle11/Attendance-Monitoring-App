@@ -14,15 +14,16 @@ import trucksActiveIcon from "../assets/images/trucks-active-icon.svg";
 import attendanceActiveIcon from "../assets/images/attendance-active-icon.svg";
 import monitorIcon from "../assets/images/monitor-icon.svg";
 import monitorActiveIcon from "../assets/images/monitor-active-icon.svg";
-import dispatchIcon from "../assets/images/dispatch-icon.svg";
-import dispatchActiveIcon from "../assets/images/dispatch-active-icon.svg";
 import deviceIcon from "../assets/images/device-icon.svg";
 import deviceActiveIcon from "../assets/images/device-active-icon.svg";
 import payrollIcon from "../assets/images/payroll-icon.svg";
 import payrollActiveIcon from "../assets/images/payroll-active-icon.svg";
-import loanIcon from "../assets/images/loan-icon.svg";
-import loanActiveIcon from "../assets/images/loant-active-icon.svg";
-import contributionActiveIcon from "../assets/images/contribution-active-icon.svg";
+import dmrIcon from "../assets/images/dmr-icon.svg";
+import dmrActiveIcon from "../assets/images/dmr-active-icon.svg";
+import orderIcon from "../assets/images/order-icon.svg";
+import orderActiveIcon from "../assets/images/order-active-icon.svg";
+import holidayIcon from "../assets/images/holiday-icon.svg";
+import holidayActiveIcon from "../assets/images/holiday-active-icon.svg";
 import sunIcon from "../assets/images/sun-icon.svg";
 import moonIcon from "../assets/images/moon-icon.svg";
 import links from "../assets/links.json";
@@ -36,10 +37,11 @@ const icons = {
   trucks: trucksIcon,
   monitor: monitorIcon,
   attendance: attendanceIcon,
-  dispatch: dispatchIcon,
   device: deviceIcon,
   payroll: payrollIcon,
-  loan: loanIcon,
+  dmr: dmrIcon,
+  orders: orderIcon,
+  holiday: holidayIcon,
 };
 
 const activeIcons = {
@@ -49,10 +51,11 @@ const activeIcons = {
   trucks: trucksActiveIcon,
   monitor: monitorActiveIcon,
   attendance: attendanceActiveIcon,
-  dispatch: dispatchActiveIcon,
   device: deviceActiveIcon,
   payroll: payrollActiveIcon,
-  loan: loanActiveIcon,
+  dmr: dmrActiveIcon,
+  orders: orderActiveIcon,
+  holiday: holidayActiveIcon,
 };
 
 const Sidebar = ({ isSidebarOpen }) => {
@@ -90,12 +93,13 @@ const Sidebar = ({ isSidebarOpen }) => {
         "users",
         "monitoring",
         "attendance",
-        "loan",
         "payroll",
+        "dmr",
+        "holiday",
       ],
-      Operations: ["dashboard", "trucks", "dispatch"],
-      "IT Department": ["dashboard", "departments", "device"],
-      Finance: ["dashboard", "payroll", "loan"],
+      Operations: ["dashboard", "trucks", "orders", "dmr"],
+      "IT Department": ["dashboard", "departments", "device", "users"],
+      Finance: ["dashboard", "payroll", "dmr"],
     };
 
     const defaultLinks = ["dashboard"];

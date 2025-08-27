@@ -595,8 +595,20 @@
   flex-direction: column;
   gap: 1rem;
 }
+.payroll-employee-name-container {
+  width: 100%;
+}
+.payroll-employee-name {
+  font-size: 18px;
+  font-family: var(--font-secondary);
+  font-weight: normal;
+  color: var(--text-secondary);
+}
 .payroll-table-container {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   height: 450px;
   overflow-x: auto;
 }

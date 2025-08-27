@@ -4,6 +4,7 @@ const getTrucks = (req, res) => {
   const sql = `
     SELECT 
       trucks.id AS truck_id,
+      trucks.driver_name,
       trucks.renewal_month,
       trucks.plate_number,
       trucks.truck_type,
@@ -337,12 +338,10 @@ const insertTruckRegistration = (req, res) => {
     }
 
     if (checkResults.length > 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Truck already registered this year.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Truck already registered this year.",
+      });
     }
 
     const insertSql = `

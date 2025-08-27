@@ -129,7 +129,11 @@ const ITDepartments = () => {
 
   const handleSearchChange = (e) => setSearch(e.target.value);
   const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
-  const toggleFilterDropdown = () => setFilterDropdownOpen(!filterDropdownOpen);
+  const toggleFilterDropdown = () => {
+    setFilterDropdownOpen(!filterDropdownOpen);
+    setSortDropdownOpen(false);
+    setExportDropdownOpen(false);
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "";

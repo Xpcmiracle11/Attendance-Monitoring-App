@@ -5,6 +5,8 @@ import Sidebar from "../components/Sidebar";
 import styles from "../assets/styles/Payroll.module.css";
 import FINPayroll from "../components/department-components/fin-components/FINPayroll";
 import HRPayroll from "../components/department-components/hr-components/HRPayroll";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const Payroll = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userDepartment, setUserDepartment] = useState(null);
@@ -23,7 +25,7 @@ const Payroll = () => {
           localStorage.getItem("token") || sessionStorage.getItem("token");
         if (!token) return;
 
-        const response = await axios.get("http://localhost:8080/api/user", {
+        const response = await axios.get(`${API_BASE_URL}/user`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

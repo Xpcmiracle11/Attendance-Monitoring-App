@@ -7,7 +7,7 @@ const getUserCount = (req, res) => {
   const totalCountSQL = `
     SELECT
       (SELECT COUNT(*) FROM users) AS total_users,
-      (SELECT COUNT(*) FROM users WHERE role = 'Admin') AS total_admins,
+      (SELECT COUNT(*) FROM users WHERE role NOT IN ('Crew', 'Driver')) AS total_admins,
       (SELECT COUNT(*) FROM users WHERE role = 'Crew') AS total_crews,
       (SELECT COUNT(*) FROM users WHERE role = 'Driver') AS total_drivers
   `;
@@ -16,7 +16,7 @@ const getUserCount = (req, res) => {
     SELECT
       ym.y,
       ym.m,
-      COALESCE(SUM(CASE WHEN u.role = 'Admin' THEN u.num ELSE 0 END), 0) AS admins,
+      COALESCE(SUM(CASE WHEN u.role NOT IN ('Crew', 'Driver') THEN u.num ELSE 0 END), 0) AS admins,
       COALESCE(SUM(CASE WHEN u.role = 'Crew' THEN u.num ELSE 0 END), 0) AS crews,
       COALESCE(SUM(CASE WHEN u.role = 'Driver' THEN u.num ELSE 0 END), 0) AS drivers
     FROM (

@@ -2,6 +2,7 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const tokenBlacklist = new Set();
+require("dotenv").config();
 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -29,6 +30,24 @@ const loginUser = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password.",
+      });
+    }
+
+    const attendanceQuery = `
+      SELECT id FROM attendance_details 
+      WHERE user_id = ? 
+      AND DATE(clock_in) = CURDATE()
+      AND clock_in IS NOT NULL
+      AND clock_out IS NULL
+      LIMIT 1
+    `;
+    const [attendance] = await db.promise().query(attendanceQuery, [user.id]);
+
+    if (attendance.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Login not allowed. Either no clock-in or already clocked out today.",
       });
     }
 
@@ -107,7 +126,7 @@ const getUserDetails = (req, res) => {
 
       let user = results[0];
       user.image_file_path = user.image_file_name
-        ? `http://localhost:8080/uploads/${user.image_file_name}`
+        ? `${process.env.API_BASE_URL}/uploads/${user.image_file_name}`
         : null;
 
       return res.json({ success: true, user });

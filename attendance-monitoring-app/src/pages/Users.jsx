@@ -1,16 +1,43 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import HRUsers from "../components/department-components/hr-components/HRUsers";
 import styles from "../assets/styles/Users.module.css";
-
+import HRUsers from "../components/department-components/hr-components/HRUsers";
+import ITUsers from "../components/department-components/it-components/ITUsers";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const Users = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userDepartment, setUserDepartment] = useState(null);
+
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
   };
+
   const sidebarRef = useRef(null);
   const toggleButtonRef = useRef(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (!token) return;
+
+        const response = await axios.get(`${API_BASE_URL}/user`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data.success) {
+          setUserDepartment(response.data.user.department_name);
+        }
+      } catch (error) {
+        console.error("Error fetching user data: ", error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -32,20 +59,26 @@ const Users = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className={styles.users}>
+    <div className={styles.Users}>
       <Topbar
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         toggleButtonRef={toggleButtonRef}
       />
-      <div className={styles["users-container"]}>
+      <div className={styles["Users-container"]}>
         <div className={styles["sidebar-container"]} ref={sidebarRef}>
           <Sidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={toggleSidebar}
           />
         </div>
-        <HRUsers />
+        {userDepartment === "Human Resources" ? (
+          <HRUsers />
+        ) : userDepartment === "IT Department" ? (
+          <ITUsers />
+        ) : (
+          ""
+        )}
       </div>
     </div>
   );
