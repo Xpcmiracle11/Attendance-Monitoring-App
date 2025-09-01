@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   db:
-    image: mysql:8
+    image: mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: ehd_database
@@ -10,18 +10,35 @@ services:
       - "3307:3306"
     volumes:
       - dbdata:/var/lib/mysql
+      - ./server/config/ehd_database.sql:/docker-entrypoint-initdb.d/ehd_database.sql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-prootpassword",
+        ]
+      timeout: 10s
+      retries: 10
+      interval: 5s
+      start_period: 10s
+    restart: unless-stopped
 
   backend:
     build: ./server
-    environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASS=rootpassword
-      - DB_NAME=ehd_database
+    env_file:
+      - ./server/.env
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: on-failure
 
   frontend:
     build: ./attendance-monitoring-app
@@ -29,6 +46,7 @@ services:
       - "80:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
 volumes:
   dbdata:
