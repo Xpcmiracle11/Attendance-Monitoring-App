@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/ITDevice.module.css";
+import styles from "../../../assets/styles/OPSDispatch.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
 import deleteIcon from "../../../assets/images/delete-icon.svg";
@@ -21,11 +21,12 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
+import Select from "react-select";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const ITDevice = () => {
-  const [devices, setDevices] = useState([]);
+const OPSDispatch = () => {
+  const [dispatches, setDispatches] = useState([]);
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,7 +40,7 @@ const ITDevice = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedDispatch, setSelectedDispatch] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState("");
@@ -51,45 +52,46 @@ const ITDevice = () => {
   const exportRef = useRef(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
-  const [devicesData, setDevicesData] = useState({
-    name: "",
-    ipAddress: "",
-    port: "",
+  const [dispatchesData, setDispatchesData] = useState({
+    userId: "",
+    truckId: "",
+    loadedDate: "",
   });
   const [errors, setErrors] = useState({
-    name: "",
-    ipAddress: "",
+    userId: "",
+    truckId: "",
+    loadedDate: "",
     apiError: "",
   });
 
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
-  const fetchDevices = async () => {
+  const fetchDispatches = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/devices`);
+      const response = await axios.get(`${API_BASE_URL}/dispatches`);
       if (response.data.success) {
-        setDevices(response.data.data);
+        setDispatches(response.data.data);
       }
     } catch (error) {
-      console.error("Error fetching device:", error);
+      console.error("Error fetching dispatch:", error);
     }
   };
   useEffect(() => {
-    fetchDevices();
+    fetchDispatches();
   }, []);
 
-  const filteredDevices = devices
-    .filter((device) => {
-      const driverName = (device.ip_address || "").toLowerCase();
+  const filteredDispatches = dispatches
+    .filter((dispatch) => {
+      const driverName = (dispatch.full_name || "").toLowerCase();
       const matchesSearch = driverName.includes(search.toLowerCase());
 
-      const deviceDate = device.created_at
-        ? new Date(device.created_at.split("T")[0])
+      const dispatchDate = dispatch.created_at
+        ? new Date(dispatch.created_at.split("T")[0])
         : new Date();
       const iswithinDateRange =
-        (!appliedFromDate || deviceDate >= new Date(appliedFromDate)) &&
-        (!appliedToDate || deviceDate <= new Date(appliedToDate));
+        (!appliedFromDate || dispatchDate >= new Date(appliedFromDate)) &&
+        (!appliedToDate || dispatchDate <= new Date(appliedToDate));
 
       return matchesSearch && iswithinDateRange;
     })
@@ -98,15 +100,15 @@ const ITDevice = () => {
         return new Date(a.created_at) - new Date(b.created_at);
       if (sortOrder === "date-desc")
         return new Date(b.created_at) - new Date(a.created_at);
-      if (sortOrder === "ip_address-asc")
-        return a.ip_address.localeCompare(b.ip_address);
-      if (sortOrder === "ip_address-desc")
-        return b.ip_address.localeCompare(a.ip_address);
+      if (sortOrder === "full_name-asc")
+        return a.full_name.localeCompare(b.full_name);
+      if (sortOrder === "full_name-desc")
+        return b.full_name.localeCompare(a.full_name);
       return 0;
     });
 
-  const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
-  const paginatedDevices = filteredDevices.slice(
+  const totalPages = Math.ceil(filteredDispatches.length / itemsPerPage);
+  const paginatedDispatches = filteredDispatches.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -144,20 +146,30 @@ const ITDevice = () => {
     return date.toLocaleDateString("en-US", options);
   };
 
-  const tableColumn = ["ID", "Name", "IP Address", "Port", "Created At"];
+  const tableColumn = [
+    "ID",
+    "Name",
+    "Truck Plate",
+    "Truck Type",
+    "Loaded Date",
+    "Empty Date",
+    "Created At",
+  ];
 
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
       Name: item.name,
-      "IP Address": item.ip_address,
-      Port: item.port,
+      "Truck Plate": item.plate_number,
+      "Truck Type": item.truck_type,
+      "Loaded Date": formatDate(item.loaded_date),
+      "Empty Date": formatDate(item.empty_date),
       "Created At": formatDate(item.created_at),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Devices");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dispatches");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -168,19 +180,21 @@ const ITDevice = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
     });
 
-    saveAs(blob, "devices.xlsx");
+    saveAs(blob, "dispatches.xlsx");
   };
 
   const exportToPDF = (data) => {
     const doc = new jsPDF();
 
-    doc.text("Devices Report", 14, 10);
+    doc.text("Dispatches Report", 14, 10);
 
     const tableRows = data.map((item, index) => [
       index + 1,
       item.name || "",
-      item.ip_address || "",
-      item.port || "",
+      item.plate_number || "",
+      item.truck_type || "",
+      formatDate(item.loaded_date),
+      formatDate(item.empty_date),
       formatDate(item.created_at),
     ]);
 
@@ -190,15 +204,17 @@ const ITDevice = () => {
       startY: 20,
     });
 
-    doc.save("devices.pdf");
+    doc.save("dispatches.pdf");
   };
 
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
       Name: "name",
-      "IP Address": "ip_address",
-      Port: "port",
+      "Truck Plate": "plate_number",
+      "Truck Type": "truck_type",
+      "Loaded Date": "loaded_date",
+      "Empty Date": "empty_date",
       "Created At": "created_at",
     };
 
@@ -206,14 +222,20 @@ const ITDevice = () => {
       return new TableRow({
         children: tableColumn.map((column) => {
           const key = columnKeyMap[column];
-          const value =
-            column === "ID"
-              ? (index + 1).toString()
-              : column === "Created At"
-              ? formatDate(item[key])
-              : item[key]
-              ? item[key].toString()
-              : "";
+
+          let value = "";
+          if (column === "ID") {
+            value = (index + 1).toString();
+          } else if (
+            column === "Created At" ||
+            column === "Loaded Date" ||
+            column === "Empty Date"
+          ) {
+            value = item[key] ? formatDate(item[key]) : "";
+          } else {
+            value = item[key] ? item[key].toString() : "";
+          }
+
           return new TableCell({
             children: [new Paragraph(value)],
           });
@@ -234,7 +256,7 @@ const ITDevice = () => {
     });
 
     Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, "devices.docx");
+      saveAs(blob, "dispatches.docx");
     });
   };
 
@@ -244,13 +266,13 @@ const ITDevice = () => {
       return;
     }
 
-    const filteredData = devices.filter((devices) => {
-      const devicesDate = devices.created_at
-        ? new Date(devices.created_at.split("T")[0])
+    const filteredData = dispatches.filter((dispatches) => {
+      const dispatchesDate = dispatches.created_at
+        ? new Date(dispatches.created_at.split("T")[0])
         : new Date();
       return (
-        (!exportFromDate || devicesDate >= new Date(exportFromDate)) &&
-        (!exportToDate || devicesDate <= new Date(exportToDate))
+        (!exportFromDate || dispatchesDate >= new Date(exportFromDate)) &&
+        (!exportToDate || dispatchesDate <= new Date(exportToDate))
       );
     });
 
@@ -283,55 +305,148 @@ const ITDevice = () => {
     setExportFileType(type);
   };
 
+  const [driverOptions, setDriverOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/users`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const users = response.data.data;
+
+          const filteredUsers = users.filter((user) => {
+            const isDriver =
+              user.department_name === "Operations" && user.role === "Driver";
+            const isAssigned = dispatches.some(
+              (dispatch) => dispatch.user_id === user.id
+            );
+            const isCurrentDriver =
+              selectedDispatch && selectedDispatch.user_id === user.id;
+
+            return isDriver && (!isAssigned || isCurrentDriver);
+          });
+
+          if (
+            selectedDispatch &&
+            selectedDispatch.user_id &&
+            !filteredUsers.some((u) => u.id === selectedDispatch.user_id)
+          ) {
+            const currentDriver = users.find(
+              (u) => u.id === selectedDispatch.user_id
+            );
+            if (currentDriver) {
+              filteredUsers.push(currentDriver);
+            }
+          }
+
+          const options = filteredUsers.map((user) => ({
+            value: String(user.id),
+            label: user.full_name,
+          }));
+
+          setDriverOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching drivers:", error);
+      });
+  }, [dispatches, selectedDispatch]);
+
+  const [plateNumberOptions, setPlateNumberOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/trucks`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const trucks = response.data.data;
+
+          const filteredTrucks = trucks.filter((truck) => {
+            const isAssigned = dispatches.some(
+              (dispatch) => dispatch.truck_id === truck.id
+            );
+            const isCurrentTruck =
+              selectedDispatch && selectedDispatch.truck_id === truck.id;
+
+            return !isAssigned || isCurrentTruck;
+          });
+
+          if (
+            selectedDispatch &&
+            selectedDispatch.truck_id &&
+            !filteredTrucks.some((t) => t.id === selectedDispatch.truck_id)
+          ) {
+            const currentTruck = trucks.find(
+              (t) => t.id === selectedDispatch.truck_id
+            );
+            if (currentTruck) {
+              filteredTrucks.push(currentTruck);
+            }
+          }
+
+          const options = filteredTrucks.map((truck) => ({
+            value: String(truck.id),
+            label: truck.plate_number,
+          }));
+
+          setPlateNumberOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching trucks:", error);
+      });
+  }, [dispatches, selectedDispatch]);
+
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
   };
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setDevicesData({
-      name: "",
-      ipAddress: "",
-      port: "",
+    setDispatchesData({
+      userId: "",
+      truckId: "",
+      loadedDate: "",
     });
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
   };
 
-  const handleInputChange = (eventOrValue, nameArg, valueArg) => {
-    let fieldName, fieldValue;
-
-    if (eventOrValue && eventOrValue.target) {
-      fieldName = eventOrValue.target.name;
-      fieldValue = eventOrValue.target.value;
+  const handleInputChange = (e, name, value) => {
+    if (e && e.target) {
+      const { name, value } = e.target;
+      setDispatchesData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }));
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "",
+      }));
     } else {
-      fieldName = nameArg;
-      fieldValue = valueArg;
+      setDispatchesData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }));
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: "",
+      }));
     }
-
-    if (fieldName === "ipAddress") {
-      fieldValue = formatIpInput(fieldValue);
-    }
-
-    setDevicesData((prevData) => ({
-      ...prevData,
-      [fieldName]: fieldValue,
-    }));
-
-    setErrors((prevErrors) => ({
-      ...prevErrors,
-      [fieldName]: "",
-    }));
   };
 
   const formatIpInput = (value) => {
@@ -347,57 +462,57 @@ const ITDevice = () => {
     return validParts.join(".");
   };
 
-  const handleAddDevice = async (e) => {
+  const handleAddDispatch = async (e) => {
     e.preventDefault();
 
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
 
     let hasError = false;
 
-    if (!devicesData.name.trim()) {
+    if (!dispatchesData.userId) {
       setErrors((prev) => ({
         ...prev,
-        name: "Device name is required.",
+        userId: "Driver name is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.ipAddress.trim()) {
+    if (!dispatchesData.truckId) {
       setErrors((prev) => ({
         ...prev,
-        ipAddress: "IP address is required.",
+        truckId: "Truck is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.port.trim()) {
+    if (!dispatchesData.loadedDate) {
       setErrors((prev) => ({
         ...prev,
-        port: "Port is required.",
+        loadedDate: "Loaded date is required.",
       }));
       hasError = true;
     }
     if (hasError) return;
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/insert-device`, {
-        name: devicesData.name,
-        ip_address: devicesData.ipAddress,
-        port: devicesData.port,
+      const response = await axios.post(`${API_BASE_URL}/insert-dispatch`, {
+        user_id: dispatchesData.userId,
+        truck_id: dispatchesData.truckId,
+        loaded_date: dispatchesData.loadedDate,
       });
       if (response.data.success) {
-        setDevices((prevDevices) => [
-          ...prevDevices,
+        setDispatches((prevDispatches) => [
+          ...prevDispatches,
           {
-            name: devicesData.name,
-            ip_address: devicesData.ipAddress,
-            port: devicesData.port,
+            user_id: dispatchesData.userId,
+            truck_id: dispatchesData.truckId,
+            loaded_date: dispatchesData.loadedDate,
           },
         ]);
-        fetchDevices();
+        fetchDispatches();
         closeAddModal();
       } else {
         setErrors((prev) => ({
@@ -413,29 +528,29 @@ const ITDevice = () => {
     }
   };
 
-  const toggleEditModal = (device = null) => {
-    setSelectedDevice(device);
-    setDevicesData({
-      name: device?.name || "",
-      ipAddress: device?.ip_address || "",
-      port: device?.port || "",
+  const toggleEditModal = (dispatch = null) => {
+    setSelectedDispatch(dispatch);
+    setDispatchesData({
+      userId: dispatch?.user_id || "",
+      truckId: dispatch?.truck_id || "",
+      loadedDate: dispatch?.loaded_date || "",
     });
     setIsEditModalOpen(true);
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
-    setSelectedDevice(null);
-    setDevicesData({
-      name: "",
-      ipAddress: "",
-      port: "",
+    setSelectedDispatch(null);
+    setDispatchesData({
+      userId: "",
+      truckId: "",
+      loadedDate: "",
     });
     setErrors({
       name: "",
@@ -445,43 +560,43 @@ const ITDevice = () => {
     });
   };
 
-  const handleEditDevice = async (e) => {
+  const handleEditDispatch = async (e) => {
     e.preventDefault();
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
 
-    if (!selectedDevice || !selectedDevice.id) {
+    if (!selectedDispatch || !selectedDispatch.id) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid device selected.",
+        apiError: "Invalid dispatch selected.",
       }));
       return;
     }
 
     let hasError = false;
 
-    if (!devicesData.name.trim()) {
+    if (!dispatchesData.userId) {
       setErrors((prev) => ({
         ...prev,
-        name: "Device name is required.",
+        userId: "Driver name is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.ipAddress.trim()) {
+    if (!dispatchesData.truckId) {
       setErrors((prev) => ({
         ...prev,
-        ipAddress: "IP address is required.",
+        truckId: "Truck is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.port) {
+    if (!dispatchesData.loadedDate) {
       setErrors((prev) => ({
         ...prev,
-        port: "Port is required.",
+        loadedDate: "Port is required.",
       }));
       hasError = true;
     }
@@ -489,27 +604,27 @@ const ITDevice = () => {
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/update-device/${selectedDevice.id}`,
+        `${API_BASE_URL}/update-dispatch/${selectedDispatch.id}`,
         {
-          name: devicesData.name,
-          ip_address: devicesData.ipAddress,
-          port: devicesData.port,
+          user_id: dispatchesData.userId,
+          truck_id: dispatchesData.truckId,
+          loaded_date: dispatchesData.loadedDate,
         }
       );
       if (response.data.success) {
-        setDevices((prevDevices) =>
-          prevDevices.map((device) =>
-            device.id === selectedDevice.id
+        setDispatches((prevDispatches) =>
+          prevDispatches.map((dispatch) =>
+            dispatch.id === selectedDispatch.id
               ? {
-                  ...device,
-                  name: devicesData.name,
-                  ip_address: devicesData.ipAddressd,
-                  port: devicesData.port,
+                  ...dispatch,
+                  user_id: dispatchesData.userId,
+                  truck_id: dispatchesData.truckId,
+                  loaded_date: dispatchesData.loadedDate,
                 }
-              : device
+              : dispatch
           )
         );
-        fetchDevices();
+        fetchDispatches();
         closeEditModal();
       } else {
         setErrors((prev) => ({
@@ -521,34 +636,36 @@ const ITDevice = () => {
       setErrors((prev) => ({
         ...prev,
         apiError:
-          error.response?.data?.message === "Failed to update devicek .",
+          error.response?.data?.message === "Failed to update dispatch .",
       }));
     }
   };
 
-  const toggleDeleteModal = (device = null) => {
-    setSelectedDevice(device);
+  const toggleDeleteModal = (dispatch = null) => {
+    setSelectedDispatch(dispatch);
     setIsDeleteModalOpen(!isDeleteModalOpen);
   };
 
   const closeDeleteModal = () => {
-    setSelectedDevice(null);
+    setSelectedDispatch(null);
     setIsDeleteModalOpen(false);
   };
 
-  const handleDeleteDevice = async () => {
-    if (!selectedDevice) return;
+  const handleDeleteDispatch = async () => {
+    if (!selectedDispatch) return;
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/delete-device/${selectedDevice.id}`
+        `${API_BASE_URL}/delete-dispatch/${selectedDispatch.id}`
       );
 
       if (response.data.success) {
-        setDevices((prevDevices) =>
-          prevDevices.filter((device) => device.id !== selectedDevice.id)
+        setDispatches((prevDispatches) =>
+          prevDispatches.filter(
+            (dispatch) => dispatch.id !== selectedDispatch.id
+          )
         );
-        fetchDevices();
+        fetchDispatches();
         toggleDeleteModal();
       }
     } catch (error) {
@@ -591,17 +708,17 @@ const ITDevice = () => {
   }, []);
 
   return (
-    <div className={styles["device-content"]}>
+    <div className={styles["dispatch-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>Device</h1>
+        <h1 className={styles["page-title"]}>Dispatch</h1>
       </div>
       <div className={styles["content-body-container"]}>
-        <div className={styles["add-device-button-container"]}>
+        <div className={styles["add-dispatch-button-container"]}>
           <button
-            className={styles["add-device-button"]}
+            className={styles["add-dispatch-button"]}
             onClick={toggleAddModal}
           >
-            Add Device
+            Add Dispatch
           </button>
         </div>
         <div className={styles["filter-container"]} ref={filterRef}>
@@ -967,27 +1084,33 @@ const ITDevice = () => {
           <table className={styles.table}>
             <thead className={styles.thead}>
               <tr className={styles.htr}>
-                <th className={styles.th}>Device Name</th>
-                <th className={styles.th}>IP Address</th>
-                <th className={styles.th}>Port</th>
+                <th className={styles.th}>Driver Name</th>
+                <th className={styles.th}>Truck Plate</th>
+                <th className={styles.th}>Truck Type</th>
+                <th className={styles.th}>Loaded Date</th>
+                <th className={styles.th}>Empty Date</th>
+                <th className={styles.th}>Status</th>
                 <th className={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody className={styles.tbody}>
-              {paginatedDevices.map((device, index) => (
+              {paginatedDispatches.map((dispatch, index) => (
                 <tr className={styles.btr} key={index}>
                   <td className={styles.td}>
-                    {index + 1}. {device.name}
+                    {index + 1}. {dispatch.full_name}
                   </td>
-                  <td className={styles.td}>{device.ip_address}</td>
-                  <td className={styles.td}>{device.port}</td>
+                  <td className={styles.td}>{dispatch.plate_number}</td>
+                  <td className={styles.td}>{dispatch.truck_type}</td>
+                  <td className={styles.td}>{dispatch.loaded_date}</td>
+                  <td className={styles.td}>{dispatch.empty_date}</td>
+                  <td className={styles.td}>{dispatch.status}</td>
                   <td className={styles.td}>
                     <div className={styles["action-container"]}>
                       <button
                         className={styles["edit-button"]}
                         onMouseEnter={() => setIsEditHovered(index)}
                         onMouseLeave={() => setIsEditHovered(null)}
-                        onClick={() => toggleEditModal(device)}
+                        onClick={() => toggleEditModal(dispatch)}
                       >
                         <img
                           className={styles["edit-icon"]}
@@ -1002,7 +1125,7 @@ const ITDevice = () => {
                         className={styles["delete-button"]}
                         onMouseEnter={() => setIsDeleteHovered(index)}
                         onMouseLeave={() => setIsDeleteHovered(null)}
-                        onClick={() => toggleDeleteModal(device)}
+                        onClick={() => toggleDeleteModal(dispatch)}
                       >
                         <img
                           className={styles["delete-icon"]}
@@ -1019,13 +1142,13 @@ const ITDevice = () => {
                   </td>
                 </tr>
               ))}
-              {paginatedDevices.length === 0 && (
+              {paginatedDispatches.length === 0 && (
                 <tr className={styles.btr}>
                   <td
                     colSpan="4"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
-                    No devices found.
+                    No dispatches found.
                   </td>
                 </tr>
               )}
@@ -1124,7 +1247,7 @@ const ITDevice = () => {
             className={`${styles["modal-container"]} ${styles["add-modal-container"]}`}
           >
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Add Device</h3>
+              <h3 className={styles["modal-title"]}>Add Dispatch</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeAddModal}
@@ -1138,56 +1261,180 @@ const ITDevice = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleAddDevice}
+              onSubmit={handleAddDispatch}
             >
-              <label className={styles.label} htmlFor="name">
-                Device Name/Model
-                <input
+              <label className={styles.label} htmlFor="user_id">
+                Driver
+                <Select
                   className={`${styles.input} ${
-                    errors.name ? styles["error-input"] : ""
+                    errors.userId ? styles["error-input"] : ""
                   }`}
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={devicesData.name}
-                  onChange={handleInputChange}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={driverOptions}
+                  placeholder="Select Driver"
+                  name="userId"
+                  id="user_id"
+                  value={driverOptions.find(
+                    (option) => option.value === String(dispatchesData.userId)
+                  )}
+                  onChange={(selectedOption) =>
+                    handleInputChange(null, "userId", selectedOption.value)
+                  }
                 />
-                {errors.name && (
-                  <p className={styles["error-message"]}>{errors.name}</p>
+                {errors.userId && (
+                  <p className={styles["error-message"]}>{errors.userId}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="ip_address">
-                IP Address
-                <input
+              <label className={styles.label} htmlFor="truck_id">
+                Truck
+                <Select
                   className={`${styles.input} ${
-                    errors.ipAddress ? styles["error-input"] : ""
+                    errors.truckId ? styles["error-input"] : ""
                   }`}
-                  type="text"
-                  id="ip_address"
-                  name="ipAddress"
-                  value={devicesData.ipAddress}
-                  onChange={handleInputChange}
-                  maxLength="15"
-                  size="15"
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={plateNumberOptions}
+                  placeholder="Select Truck"
+                  name="truckId"
+                  id="truck_id"
+                  value={plateNumberOptions.find(
+                    (option) => option.value === String(dispatchesData.truckId)
+                  )}
+                  onChange={(selectedOption) =>
+                    handleInputChange(null, "truckId", selectedOption.value)
+                  }
                 />
-                {errors.ipAddress && (
-                  <p className={styles["error-message"]}>{errors.ipAddress}</p>
+                {errors.truckId && (
+                  <p className={styles["error-message"]}>{errors.truckId}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="port">
-                Port
+              <label className={styles.label} htmlFor="loaded_date">
+                Loaded Date
                 <input
                   className={`${styles.input} ${
-                    errors.port ? styles["error-input"] : ""
+                    errors.loadedDate ? styles["error-input"] : ""
                   }`}
-                  type="number"
-                  id="port"
-                  name="port"
-                  value={devicesData.port}
+                  type="date"
+                  id="loaded_date"
+                  name="loadedDate"
+                  value={dispatchesData.loadedDate}
                   onChange={handleInputChange}
                 />
-                {errors.port && (
-                  <p className={styles["error-message"]}>{errors.port}</p>
+                {errors.loadedDate && (
+                  <p className={styles["error-message"]}>{errors.loadedDate}</p>
                 )}
               </label>
               {errors.apiError && (
@@ -1198,14 +1445,14 @@ const ITDevice = () => {
           </div>
         </Modal>
       )}
-      {isEditModalOpen && selectedDevice && (
+      {isEditModalOpen && selectedDispatch && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
         >
           <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit Device</h3>
+              <h3 className={styles["modal-title"]}>Edit Dispatch</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeEditModal}
@@ -1219,56 +1466,186 @@ const ITDevice = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleEditDevice}
+              onSubmit={handleEditDispatch}
             >
-              <label className={styles.label} htmlFor="name">
-                Device Name/Model
-                <input
+              <label className={styles.label} htmlFor="user_id">
+                Driver
+                <Select
                   className={`${styles.input} ${
-                    errors.name ? styles["error-input"] : ""
+                    errors.userId ? styles["error-input"] : ""
                   }`}
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={devicesData.name}
-                  onChange={handleInputChange}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={driverOptions}
+                  placeholder="Select Driver"
+                  name="userId"
+                  id="user_id"
+                  value={driverOptions.find(
+                    (option) => option.value === String(dispatchesData.userId)
+                  )}
+                  onChange={(selectedOption) =>
+                    setDispatchesData((prev) => ({
+                      ...prev,
+                      userId: selectedOption.value,
+                    }))
+                  }
                 />
-                {errors.name && (
-                  <p className={styles["error-message"]}>{errors.name}</p>
+                {errors.userId && (
+                  <p className={styles["error-message"]}>{errors.userId}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="ip_address">
-                IP Address
-                <input
+              <label className={styles.label} htmlFor="truck_id">
+                Truck
+                <Select
                   className={`${styles.input} ${
-                    errors.ipAddress ? styles["error-input"] : ""
+                    errors.truckId ? styles["error-input"] : ""
                   }`}
-                  type="text"
-                  id="ip_address"
-                  name="ipAddress"
-                  value={devicesData.ipAddress}
-                  onChange={handleInputChange}
-                  maxLength="15"
-                  size="15"
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={plateNumberOptions}
+                  placeholder="Select Truck"
+                  name="truckId"
+                  id="truck_id"
+                  value={plateNumberOptions.find(
+                    (option) => option.value === String(dispatchesData.truckId)
+                  )}
+                  onChange={(selectedOption) =>
+                    setDispatchesData((prev) => ({
+                      ...prev,
+                      truckId: selectedOption.value,
+                    }))
+                  }
                 />
-                {errors.ipAddress && (
-                  <p className={styles["error-message"]}>{errors.ipAddress}</p>
+                {errors.truckId && (
+                  <p className={styles["error-message"]}>{errors.truckId}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="port">
-                Port
+              <label className={styles.label} htmlFor="loaded_date">
+                Loaded Date
                 <input
                   className={`${styles.input} ${
-                    errors.port ? styles["error-input"] : ""
+                    errors.loadedDate ? styles["error-input"] : ""
                   }`}
-                  type="number"
-                  id="port"
-                  name="port"
-                  value={devicesData.port}
+                  type="date"
+                  id="loaded_date"
+                  name="loadedDate"
+                  value={dispatchesData.loadedDate}
                   onChange={handleInputChange}
                 />
-                {errors.port && (
-                  <p className={styles["error-message"]}>{errors.port}</p>
+                {errors.loadedDate && (
+                  <p className={styles["error-message"]}>{errors.loadedDate}</p>
                 )}
               </label>
               {errors.apiError && (
@@ -1279,7 +1656,7 @@ const ITDevice = () => {
           </div>
         </Modal>
       )}
-      {isDeleteModalOpen && selectedDevice && (
+      {isDeleteModalOpen && selectedDispatch && (
         <Modal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
@@ -1288,12 +1665,12 @@ const ITDevice = () => {
             className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
           >
             <h1 className={styles["delete-modal-header"]}>
-              Are you sure to delete this device?
+              Are you sure to delete this dispatch?
             </h1>
             <div className={styles["delete-modal-button-container"]}>
               <button
                 className={styles["delete-modal-button"]}
-                onClick={handleDeleteDevice}
+                onClick={handleDeleteDispatch}
               >
                 Delete
               </button>
@@ -1311,4 +1688,4 @@ const ITDevice = () => {
   );
 };
 
-export default ITDevice;
+export default OPSDispatch;

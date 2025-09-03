@@ -48,10 +48,10 @@
     "active": "activePayroll"
   },
   {
-    "name": "Orders",
-    "path": "/orders",
-    "icon": "orders",
-    "active": "activeOrders"
+    "name": "Dispatch",
+    "path": "/dispatch",
+    "icon": "dispatch",
+    "active": "activeDispatch"
   },
   {
     "name": "DMR",

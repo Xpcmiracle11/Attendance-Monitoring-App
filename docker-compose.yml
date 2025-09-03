@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3.8" # Remove this line if you get a warning
 
 services:
   db:
@@ -43,9 +43,23 @@ services:
   frontend:
     build: ./attendance-monitoring-app
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "8081:80"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

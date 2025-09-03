@@ -1,129 +1,103 @@
 const db = require("../config/db");
 const dayjs = require("dayjs");
 
-const getUserCount = (req, res) => {
+const getUserCount = async (req, res) => {
   const today = dayjs().format("YYYY-MM-DD");
 
-  const totalCountSQL = `
-    SELECT
-      (SELECT COUNT(*) FROM users) AS total_users,
-      (SELECT COUNT(*) FROM users WHERE role NOT IN ('Crew', 'Driver')) AS total_admins,
-      (SELECT COUNT(*) FROM users WHERE role = 'Crew') AS total_crews,
-      (SELECT COUNT(*) FROM users WHERE role = 'Driver') AS total_drivers
-  `;
+  try {
+    const totalCountSQL = `
+      SELECT
+        (SELECT COUNT(*) FROM users) AS total_users,
+        (SELECT COUNT(*) FROM users WHERE role NOT IN ('Crew', 'Driver')) AS total_admins,
+        (SELECT COUNT(*) FROM users WHERE role = 'Crew') AS total_crews,
+        (SELECT COUNT(*) FROM users WHERE role = 'Driver') AS total_drivers
+    `;
 
-  const stackedChartSQL = `
-    SELECT
-      ym.y,
-      ym.m,
-      COALESCE(SUM(CASE WHEN u.role NOT IN ('Crew', 'Driver') THEN u.num ELSE 0 END), 0) AS admins,
-      COALESCE(SUM(CASE WHEN u.role = 'Crew' THEN u.num ELSE 0 END), 0) AS crews,
-      COALESCE(SUM(CASE WHEN u.role = 'Driver' THEN u.num ELSE 0 END), 0) AS drivers
-    FROM (
-      SELECT y.y, m.m
+    const stackedChartSQL = `
+      SELECT
+        ym.y,
+        ym.m,
+        COALESCE(SUM(CASE WHEN u.role NOT IN ('Crew', 'Driver') THEN u.num ELSE 0 END), 0) AS admins,
+        COALESCE(SUM(CASE WHEN u.role = 'Crew' THEN u.num ELSE 0 END), 0) AS crews,
+        COALESCE(SUM(CASE WHEN u.role = 'Driver' THEN u.num ELSE 0 END), 0) AS drivers
       FROM (
-        SELECT DISTINCT YEAR(created_at) AS y FROM users
-      ) AS y
-      CROSS JOIN (
-        SELECT 1 AS m UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
-        SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
-        SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
-        SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
-      ) AS m
-    ) AS ym
-    LEFT JOIN (
-      SELECT 
-        YEAR(created_at) AS y,
-        MONTH(created_at) AS m,
-        role,
-        COUNT(*) AS num
-      FROM users
-      GROUP BY y, m, role
-    ) AS u
-    ON u.y = ym.y AND u.m = ym.m
-    GROUP BY ym.y, ym.m
-    ORDER BY ym.y, ym.m
-  `;
+        SELECT y.y, m.m
+        FROM (
+          SELECT DISTINCT YEAR(created_at) AS y FROM users
+        ) AS y
+        CROSS JOIN (
+          SELECT 1 AS m UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
+          SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
+          SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
+          SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+        ) AS m
+      ) AS ym
+      LEFT JOIN (
+        SELECT 
+          YEAR(created_at) AS y,
+          MONTH(created_at) AS m,
+          role,
+          COUNT(*) AS num
+        FROM users
+        GROUP BY y, m, role
+      ) AS u
+      ON u.y = ym.y AND u.m = ym.m
+      GROUP BY ym.y, ym.m
+      ORDER BY ym.y, ym.m
+    `;
 
-  const attendanceRateSQL = `
-    SELECT
-      (SELECT COUNT(*) FROM users) AS total,
-      (SELECT COUNT(DISTINCT user_id) FROM attendance_details WHERE DATE(clock_in) = ? AND status = 'Present') AS present
-  `;
+    const attendanceRateSQL = `
+      SELECT
+        (SELECT COUNT(*) FROM users) AS total,
+        (SELECT COUNT(DISTINCT user_id) FROM attendance_details WHERE DATE(clock_in) = ? AND status = 'Present') AS present
+    `;
 
-  const dailyAttendanceSQL = `
-    WITH RECURSIVE DateSeries AS (
-      SELECT CURDATE() - INTERVAL 15 DAY AS date
-      UNION ALL
-      SELECT date + INTERVAL 1 DAY
-      FROM DateSeries
-      WHERE date + INTERVAL 1 DAY <= CURDATE()
-    )
+    const dailyAttendanceSQL = `
+      WITH RECURSIVE DateSeries AS (
+        SELECT CURDATE() - INTERVAL 15 DAY AS date
+        UNION ALL
+        SELECT date + INTERVAL 1 DAY
+        FROM DateSeries
+        WHERE date + INTERVAL 1 DAY <= CURDATE()
+      )
 
-    SELECT
-      ds.date,
-      COUNT(DISTINCT ad.user_id) AS present
-    FROM DateSeries ds
-    LEFT JOIN attendance_details ad
-      ON DATE(ad.clock_in) = ds.date AND ad.status = 'Present'
-    GROUP BY ds.date
-    ORDER BY ds.date;
-  `;
+      SELECT
+        ds.date,
+        COUNT(DISTINCT ad.user_id) AS present
+      FROM DateSeries ds
+      LEFT JOIN attendance_details ad
+        ON DATE(ad.clock_in) = ds.date AND ad.status = 'Present'
+      GROUP BY ds.date
+      ORDER BY ds.date;
+    `;
 
-  db.query(totalCountSQL, (err, totalResults) => {
-    if (err) {
-      console.error("Error fetching total counts:", err);
-      return res
-        .status(500)
-        .json({ success: false, message: "Database error" });
-    }
+    const [totals] = await db.query(totalCountSQL);
+    const [chart] = await db.query(stackedChartSQL);
+    const [rateResults] = await db.query(attendanceRateSQL, [today]);
+    const [dailyAttendance] = await db.query(dailyAttendanceSQL);
 
-    db.query(stackedChartSQL, (err2, chartResults) => {
-      if (err2) {
-        console.error("Error fetching chart data:", err2);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
-      }
+    const { total, present } = rateResults[0];
+    const attendanceRate =
+      total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
 
-      db.query(attendanceRateSQL, [today], (err3, rateResults) => {
-        if (err3) {
-          console.error("Error fetching attendance rate:", err3);
-          return res
-            .status(500)
-            .json({ success: false, message: "Database error" });
-        }
-
-        const { total, present } = rateResults[0];
-        const attendanceRate =
-          total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
-
-        db.query(dailyAttendanceSQL, (err4, dailyAttendanceResults) => {
-          if (err4) {
-            console.error("Error fetching daily attendance:", err4);
-            return res
-              .status(500)
-              .json({ success: false, message: "Database error" });
-          }
-
-          res.json({
-            success: true,
-            data: {
-              totals: totalResults[0],
-              chart: chartResults,
-              attendanceRateToday: {
-                date: today,
-                total,
-                present,
-                rate: `${attendanceRate}%`,
-              },
-              dailyAttendance: dailyAttendanceResults,
-            },
-          });
-        });
-      });
+    res.json({
+      success: true,
+      data: {
+        totals: totals[0],
+        chart,
+        attendanceRateToday: {
+          date: today,
+          total,
+          present,
+          rate: `${attendanceRate}%`,
+        },
+        dailyAttendance,
+      },
     });
-  });
+  } catch (error) {
+    console.error("❌ Error in getUserCount:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
 
 module.exports = { getUserCount };

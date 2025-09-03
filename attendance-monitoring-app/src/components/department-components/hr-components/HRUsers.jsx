@@ -810,7 +810,7 @@ const HRUsers = () => {
       if (usersData.imageFileName) {
         formData.append("image", usersData.imageFileName);
       }
-
+      console.log(formData);
       const response = await axios.post(
         `${API_BASE_URL}/insert-user`,
         formData,

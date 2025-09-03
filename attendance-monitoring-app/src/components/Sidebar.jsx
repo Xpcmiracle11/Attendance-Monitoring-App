@@ -18,10 +18,10 @@ import deviceIcon from "../assets/images/device-icon.svg";
 import deviceActiveIcon from "../assets/images/device-active-icon.svg";
 import payrollIcon from "../assets/images/payroll-icon.svg";
 import payrollActiveIcon from "../assets/images/payroll-active-icon.svg";
+import dispatchIcon from "../assets/images/dispatch-icon.svg";
+import dispatchActiveIcon from "../assets/images/dispatch-active-icon.svg";
 import dmrIcon from "../assets/images/dmr-icon.svg";
 import dmrActiveIcon from "../assets/images/dmr-active-icon.svg";
-import orderIcon from "../assets/images/order-icon.svg";
-import orderActiveIcon from "../assets/images/order-active-icon.svg";
 import holidayIcon from "../assets/images/holiday-icon.svg";
 import holidayActiveIcon from "../assets/images/holiday-active-icon.svg";
 import sunIcon from "../assets/images/sun-icon.svg";
@@ -39,8 +39,8 @@ const icons = {
   attendance: attendanceIcon,
   device: deviceIcon,
   payroll: payrollIcon,
+  dispatch: dispatchIcon,
   dmr: dmrIcon,
-  orders: orderIcon,
   holiday: holidayIcon,
 };
 
@@ -53,8 +53,8 @@ const activeIcons = {
   attendance: attendanceActiveIcon,
   device: deviceActiveIcon,
   payroll: payrollActiveIcon,
+  dispatch: dispatchActiveIcon,
   dmr: dmrActiveIcon,
-  orders: orderActiveIcon,
   holiday: holidayActiveIcon,
 };
 
@@ -97,7 +97,7 @@ const Sidebar = ({ isSidebarOpen }) => {
         "dmr",
         "holiday",
       ],
-      Operations: ["dashboard", "trucks", "orders", "dmr"],
+      Operations: ["dashboard", "trucks", "dispatch", "dmr"],
       "IT Department": ["dashboard", "departments", "device", "users"],
       Finance: ["dashboard", "payroll", "dmr"],
     };

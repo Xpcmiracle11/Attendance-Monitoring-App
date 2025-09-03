@@ -15,7 +15,7 @@ const loginUser = async (req, res) => {
 
   try {
     const sql = "SELECT * FROM users WHERE email = ?";
-    const [results] = await db.promise().query(sql, [email]);
+    const [results] = await db.query(sql, [email]);
 
     if (results.length === 0) {
       return res
@@ -41,7 +41,7 @@ const loginUser = async (req, res) => {
       AND clock_out IS NULL
       LIMIT 1
     `;
-    const [attendance] = await db.promise().query(attendanceQuery, [user.id]);
+    const [attendance] = await db.query(attendanceQuery, [user.id]);
 
     if (attendance.length === 0) {
       return res.status(403).json({
@@ -64,81 +64,58 @@ const loginUser = async (req, res) => {
   }
 };
 
-const getUserDetails = (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
+const getUserDetails = async (req, res) => {
+  console.log("📥 /api/user hit, user from token:", req.user);
 
-  if (!token) {
-    return res
-      .status(400)
-      .json({ success: false, message: "No token provided." });
-  }
-
-  if (tokenBlacklist.has(token)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Token has been invalidated." });
-  }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-
-    const sql = `
-    SELECT 
-      users.id,
-      users.department_id, 
-      departments.name AS department_name, 
-      users.first_name, 
-      users.middle_name,
-      CONCAT(LEFT(users.middle_name, 1), '.') as middle_initial, 
-      users.last_name, 
-      users.email, 
-      users.phone_number, 
-      users.role, 
-      users.gender,
-      users.region,
-      users.province,
-      users.municipality,
-      users.barangay,
-      users.street,
-      users.image_file_name,
-      DATE_FORMAT(users.birth_date, '%Y-%m-%d') AS birth_date,
-      CONCAT_WS(' ', 
+    const [results] = await db.query(
+      `SELECT 
+        users.id,
+        users.department_id, 
+        departments.name AS department_name, 
         users.first_name, 
-        IF(users.middle_name IS NOT NULL AND users.middle_name != '', CONCAT(LEFT(users.middle_name, 1), '.'), ''), 
-        users.last_name
-      ) AS full_name
-    FROM users 
-    LEFT JOIN departments ON users.department_id = departments.id 
-    WHERE users.id = ?
-  `;
+        users.middle_name,
+        CONCAT(LEFT(users.middle_name, 1), '.') as middle_initial, 
+        users.last_name, 
+        users.email, 
+        users.phone_number, 
+        users.role, 
+        users.gender,
+        users.region,
+        users.province,
+        users.municipality,
+        users.barangay,
+        users.street,
+        users.image_file_name,
+        DATE_FORMAT(users.birth_date, '%Y-%m-%d') AS birth_date,
+        CONCAT_WS(' ', 
+          users.first_name, 
+          IF(users.middle_name IS NOT NULL AND users.middle_name != '', CONCAT(LEFT(users.middle_name, 1), '.'), ''), 
+          users.last_name
+        ) AS full_name
+      FROM users 
+      LEFT JOIN departments ON users.department_id = departments.id 
+      WHERE users.id = ?`,
+      [req.user.id]
+    );
 
-    db.query(sql, [decoded.id], (err, results) => {
-      if (err) {
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error." });
-      }
-      if (results.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found." });
-      }
+    console.log("📤 DB query returned:", results);
 
-      let user = results[0];
-      user.image_file_path = user.image_file_name
-        ? `${process.env.API_BASE_URL}/uploads/${user.image_file_name}`
-        : null;
-
-      return res.json({ success: true, user });
-    });
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Session expired. Please log-in again.",
-      });
+    if (!results.length) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
-    return res.status(401).json({ success: false, message: "Invalid token." });
+
+    let user = results[0];
+    user.image_file_path = user.image_file_name
+      ? `${process.env.API_BASE_URL}/uploads/${user.image_file_name}`
+      : null;
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error("❌ Error in getUserDetails:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

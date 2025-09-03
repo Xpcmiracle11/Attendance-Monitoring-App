@@ -5,12 +5,11 @@ const cors = require("cors");
 const path = require("path");
 const http = require("http");
 const socketIo = require("socket.io");
-const cron = require("node-cron"); // ✅ import cron
+const cron = require("node-cron");
 const ZKLib = require("zklib-js");
-const db = require("./config/db"); // now using promise-based pool
+const db = require("./config/db");
 const { startBiometricCronJob } = require("./controllers/attendanceController");
 
-// Routes
 const authRoutes = require("./routes/authRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -20,67 +19,13 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 const breakRoutes = require("./routes/breakRoutes");
 const deviceRoutes = require("./routes/deviceRoutes");
 const payrollRoutes = require("./routes/payrollRoutes");
-const orderRoutes = require("./routes/orderRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const chartRoutes = require("./routes/chartRoutes");
+const dispatchRoutes = require("./routes/dispatchRoutes");
 
 const app = express();
 const server = http.createServer(app);
 
-// ✅ CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  })
-);
-
-app.use(express.json());
-app.use("/uploads", express.static(path.resolve(__dirname, "./uploads")));
-
-// ✅ Routes
-app.use("/api/", authRoutes);
-app.use("/api/", departmentRoutes);
-app.use("/api/", userRoutes);
-app.use("/api/", truckRoutes);
-app.use("/api/", monitoringRoutes);
-app.use("/api/", attendanceRoutes);
-app.use("/api/", breakRoutes);
-app.use("/api/", deviceRoutes);
-app.use("/api/", payrollRoutes);
-app.use("/api/", orderRoutes);
-app.use("/api/", holidayRoutes);
-app.use("/api/", chartRoutes);
-
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-});
-
-// ✅ Socket.io
-const io = new socketIo.Server(server, {
-  cors: {
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin))
-        return callback(null, true);
-      return callback(new Error("CORS not allowed for origin: " + origin));
-    },
-    credentials: true,
-    methods: ["GET", "POST"],
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log("✅ New client connected:", socket.id);
-  socket.on("disconnect", () => {
-    console.log("❌ Client disconnected:", socket.id);
-  });
-});
-
-// ✅ Utilities
 const getLocalIP = () => {
   const interfaces = os.networkInterfaces();
   for (let iface of Object.values(interfaces)) {
@@ -94,7 +39,65 @@ const getLocalIP = () => {
 const sanitizeName = (str) =>
   str.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 24);
 
-// ✅ Sync users between devices
+const allowedOrigins = ["http://localhost:3000", "http://172.16.1.24:3000"];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
+
+app.options(
+  "*",
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+app.use("/uploads", express.static(path.resolve(__dirname, "./uploads")));
+
+app.use("/api/", authRoutes);
+app.use("/api/", departmentRoutes);
+app.use("/api/", userRoutes);
+app.use("/api/", truckRoutes);
+app.use("/api/", monitoringRoutes);
+app.use("/api/", attendanceRoutes);
+app.use("/api/", breakRoutes);
+app.use("/api/", deviceRoutes);
+app.use("/api/", payrollRoutes);
+app.use("/api/", holidayRoutes);
+app.use("/api/", chartRoutes);
+app.use("/api/", dispatchRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
+app.use((req, res, next) => {
+  res.setHeader("X-Server", "Docker-Backend");
+  next();
+});
+
+const io = new socketIo.Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("✅ New client connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
+
 const syncUsersAcrossAllDevices = async () => {
   try {
     const [devices] = await db.query("SELECT * FROM biometric_devices");
@@ -173,20 +176,16 @@ const syncUsersAcrossAllDevices = async () => {
   }
 };
 
-// ✅ Cron every 5 minutes
 cron.schedule("*/5 * * * *", () => {
   syncUsersAcrossAllDevices();
 });
 
-// ✅ Start server
 const localIP = getLocalIP();
 const PORT = process.env.PORT || 8080;
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running at http://${localIP}:${PORT}`);
   console.log("✅ Allowed Origins:", allowedOrigins);
-  console.log("🔥 ALLOWED_ORIGINS from .env:", allowedOrigins);
-  console.log("🎯 process.env.ALLOWED_ORIGINS =", process.env.ALLOWED_ORIGINS);
   syncUsersAcrossAllDevices();
   startBiometricCronJob();
 });

@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+import axios from "axios";
+
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Departments from "./pages/Departments";
@@ -15,78 +17,104 @@ import Attendance from "./pages/Attendance";
 import Device from "./pages/Device";
 import Payroll from "./pages/Payroll";
 import Profile from "./pages/Profile";
+import Dispatch from "./pages/Dispatch";
 import Dmr from "./pages/Dmr";
-import Orders from "./pages/Orders";
 import Holiday from "./pages/Holiday";
 import Loading from "./components/Loading";
-import axios from "axios";
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+
 const PrivateRoute = ({ children, allowedDepartments }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const [userDepartment, setUserDepartment] = useState(null);
+  const [authState, setAuthState] = useState({
+    isAuthenticated: null,
+    userDepartment: null,
+    error: null,
+  });
+
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    console.log("🔍 Checking token:", token);
+
+    if (!token) {
+      console.warn("🚫 No token found. Redirecting to login.");
+      setAuthState({
+        isAuthenticated: false,
+        userDepartment: null,
+        error: "No token",
+      });
+      return;
+    }
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const validateToken = async () => {
-      const token =
-        localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token) {
-        setIsAuthenticated(false);
-        return;
-      }
       try {
+        console.log("🌐 Validating token at:", `${API_BASE_URL}/user`);
         const response = await axios.get(`${API_BASE_URL}/user`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+          timeout: 10000,
         });
 
-        if (response.data.success) {
-          setIsAuthenticated(true);
-          setUserDepartment(response.data.user.department_name);
+        console.log("✅ Response from backend:", response.data);
+
+        if (response.data?.success && response.data?.user) {
+          const user = response.data.user;
+          setAuthState({
+            isAuthenticated: true,
+            userDepartment: user.department_name || null,
+            error: null,
+          });
         } else {
-          setIsAuthenticated(false);
+          console.warn("⚠️ Token validation failed. Redirecting.");
+          setAuthState({
+            isAuthenticated: false,
+            userDepartment: null,
+            error: "Invalid token",
+          });
         }
       } catch (error) {
-        console.error("Error validating token: ", error);
-
-        if (
-          error.response?.data?.message ===
-          "Session expired. Please log-in again."
-        ) {
-          localStorage.removeItem("token");
-          sessionStorage.removeItem("token");
-          window.location.href = "/";
-        }
-        setIsAuthenticated(false);
+        console.error("❌ Token validation error:", error.message);
+        setAuthState({
+          isAuthenticated: false,
+          userDepartment: null,
+          error: "Network or server error",
+        });
       }
     };
+
     validateToken();
+
+    return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    const handleStorageChange = (event) => {
-      if (event.key === "token" && !event.newValue) {
-        window.location.href = "/";
-      }
-    };
+  console.log("🔎 Auth State:", authState);
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
-
-  if (isAuthenticated === null) {
+  if (authState.isAuthenticated === null) {
     return <Loading />;
   }
 
-  if (
-    isAuthenticated &&
-    (!allowedDepartments || allowedDepartments.includes(userDepartment))
-  ) {
-    return children;
+  if (authState.isAuthenticated) {
+    if (!allowedDepartments) return children;
+    if (
+      authState.userDepartment &&
+      allowedDepartments.includes(authState.userDepartment)
+    ) {
+      return children;
+    } else {
+      console.warn("🚫 Access denied. Redirecting.");
+      return <Navigate to="/" replace />;
+    }
   }
 
-  return <Navigate to="/" />;
+  return <Navigate to="/" replace />;
 };
 
 function App() {
@@ -99,6 +127,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
+
         <Route
           path="/dashboard"
           element={
@@ -107,6 +136,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/departments"
           element={
@@ -115,6 +145,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/users"
           element={
@@ -125,6 +156,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/trucks"
           element={
@@ -135,6 +167,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/monitoring"
           element={
@@ -143,6 +176,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/attendance"
           element={
@@ -151,6 +185,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/device"
           element={
@@ -159,6 +194,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/payroll"
           element={
@@ -167,6 +203,7 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/profile"
           element={
@@ -175,6 +212,16 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        <Route
+          path="/dispatch"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <Dispatch />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/dmr"
           element={
@@ -185,14 +232,7 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/orders"
-          element={
-            <PrivateRoute allowedDepartments={["Operations"]}>
-              <Orders />
-            </PrivateRoute>
-          }
-        />
+
         <Route
           path="/holiday"
           element={

@@ -378,6 +378,11 @@
   word-break: break-word;
   position: relative;
 }
+.transport_number_td {
+  color: var(--primary-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
 .th:nth-child(1),
 .td:nth-child(1) {
   position: sticky;
