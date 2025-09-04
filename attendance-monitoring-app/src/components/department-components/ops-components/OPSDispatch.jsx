@@ -1101,8 +1101,12 @@ const OPSDispatch = () => {
                   </td>
                   <td className={styles.td}>{dispatch.plate_number}</td>
                   <td className={styles.td}>{dispatch.truck_type}</td>
-                  <td className={styles.td}>{dispatch.loaded_date}</td>
-                  <td className={styles.td}>{dispatch.empty_date}</td>
+                  <td className={styles.td}>
+                    {formatDate(dispatch.loaded_date)}
+                  </td>
+                  <td className={styles.td}>
+                    {formatDate(dispatch.empty_date)}
+                  </td>
                   <td className={styles.td}>{dispatch.status}</td>
                   <td className={styles.td}>
                     <div className={styles["action-container"]}>
@@ -1145,7 +1149,7 @@ const OPSDispatch = () => {
               {paginatedDispatches.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="4"
+                    colSpan="7"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
                     No dispatches found.
