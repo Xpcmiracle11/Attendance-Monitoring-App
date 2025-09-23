@@ -31,9 +31,22 @@
   },
   {
     "name": "Attendance",
-    "path": "/attendance",
     "icon": "attendance",
-    "active": "activeAttendance"
+    "active": "activeAttendance",
+    "children": [
+      {
+        "name": "Admin",
+        "path": "/attendance/admin"
+      },
+      {
+        "name": "Driver",
+        "path": "/attendance/driver"
+      },
+      {
+        "name": "Crew",
+        "path": "/attendance/crew"
+      }
+    ]
   },
   {
     "name": "Device",
@@ -43,9 +56,18 @@
   },
   {
     "name": "Payroll",
-    "path": "/payroll",
     "icon": "payroll",
-    "active": "activePayroll"
+    "active": "activePayroll",
+    "children": [
+      {
+        "name": "Current",
+        "path": "/payroll/current"
+      },
+      {
+        "name": "Archive",
+        "path": "/payroll/archive"
+      }
+    ]
   },
   {
     "name": "Dispatch",

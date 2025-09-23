@@ -14,7 +14,3 @@
   gap: 1rem;
   padding-top: 5rem;
 }
-.page-title {
-  font-family: var(--font-primary);
-  color: var(--primary-blue);
-}

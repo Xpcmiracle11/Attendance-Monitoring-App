@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import HRAttendance from "../components/department-components/hr-components/HRAttendance";
+import HRDriverAttendance from "../components/department-components/hr-components/HRDriverAttendance";
 import styles from "../assets/styles/Attendance.module.css";
 
-const Attendance = () => {
+const DriverAttendance = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -42,9 +42,9 @@ const Attendance = () => {
       <div className={styles["attendance-container"]} ref={sidebarRef}>
         <Sidebar isSidebarOpen={isSidebarOpen} />
       </div>
-      <HRAttendance />
+      <HRDriverAttendance />
     </div>
   );
 };
 
-export default Attendance;
+export default DriverAttendance;

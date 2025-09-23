@@ -13,14 +13,18 @@ import Departments from "./pages/Departments";
 import Users from "./pages/Users";
 import Trucks from "./pages/Trucks";
 import Monitoring from "./pages/Monitoring";
-import Attendance from "./pages/Attendance";
+import AdminAttendance from "./pages/AdminAttendance";
+import DriverAttendance from "./pages/DriverAttendance";
+import CrewAttendance from "./pages/CrewAttendance";
 import Device from "./pages/Device";
-import Payroll from "./pages/Payroll";
+import CurrentPayroll from "./pages/CurrentPayroll";
+import ArchivePayroll from "./pages/ArchivePayroll";
 import Profile from "./pages/Profile";
 import Dispatch from "./pages/Dispatch";
 import Dmr from "./pages/Dmr";
 import Holiday from "./pages/Holiday";
 import Loading from "./components/Loading";
+import EmployeeProfile from "./pages/EmployeeProfile";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
@@ -178,10 +182,28 @@ function App() {
         />
 
         <Route
-          path="/attendance"
+          path="/attendance/admin"
           element={
             <PrivateRoute allowedDepartments={["Human Resources"]}>
-              <Attendance />
+              <AdminAttendance />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/attendance/driver"
+          element={
+            <PrivateRoute allowedDepartments={["Human Resources"]}>
+              <DriverAttendance />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/attendance/crew"
+          element={
+            <PrivateRoute allowedDepartments={["Human Resources"]}>
+              <CrewAttendance />
             </PrivateRoute>
           }
         />
@@ -196,10 +218,19 @@ function App() {
         />
 
         <Route
-          path="/payroll"
+          path="/payroll/current"
           element={
             <PrivateRoute allowedDepartments={["Finance", "Human Resources"]}>
-              <Payroll />
+              <CurrentPayroll />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/payroll/archive"
+          element={
+            <PrivateRoute allowedDepartments={["Finance", "Human Resources"]}>
+              <ArchivePayroll />
             </PrivateRoute>
           }
         />
@@ -207,7 +238,15 @@ function App() {
         <Route
           path="/profile"
           element={
-            <PrivateRoute>
+            <PrivateRoute
+              allowedDepartments={[
+                "Finance",
+                "Human Resources",
+                "IT Department",
+                "Operations",
+                "Motorpool",
+              ]}
+            >
               <Profile />
             </PrivateRoute>
           }
@@ -238,6 +277,15 @@ function App() {
           element={
             <PrivateRoute allowedDepartments={["Human Resources"]}>
               <Holiday />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/employee-profile/:id"
+          element={
+            <PrivateRoute allowedDepartments={["Human Resources"]}>
+              <EmployeeProfile />
             </PrivateRoute>
           }
         />

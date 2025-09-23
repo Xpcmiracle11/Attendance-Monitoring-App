@@ -9,9 +9,10 @@ const runQuery = async (sql, params = []) => {
 const getDispatches = async (req, res) => {
   try {
     const sql = `
-      SELECT 
+     SELECT 
       d.id, 
       u.id AS user_id, 
+      JSON_ARRAYAGG(c.id) AS crew_id,
       t.id AS truck_id,
       CONCAT_WS(
           ' ', 
@@ -19,6 +20,15 @@ const getDispatches = async (req, res) => {
           IF(u.middle_name IS NOT NULL AND u.middle_name != '', CONCAT(SUBSTRING(u.middle_name, 1, 1), '.'), ''), 
           u.last_name
       ) AS full_name,
+      GROUP_CONCAT(
+          CONCAT_WS(
+              ' ', 
+              c.first_name, 
+              IF(c.middle_name IS NOT NULL AND c.middle_name != '', CONCAT(SUBSTRING(c.middle_name, 1, 1), '.'), ''), 
+              c.last_name
+          )
+          SEPARATOR ', '
+      ) AS crew_name,
       t.plate_number, 
       t.truck_type,
       DATE_FORMAT(d.loaded_date, '%Y-%m-%d') AS loaded_date,
@@ -27,7 +37,10 @@ const getDispatches = async (req, res) => {
       DATE_FORMAT(d.created_at, '%Y-%m-%d') AS created_at
   FROM dispatches d
   LEFT JOIN users u ON d.user_id = u.id
+  LEFT JOIN dispatch_crew dc ON d.id = dc.dispatch_id
+  LEFT JOIN users c ON dc.crew_id = c.id
   LEFT JOIN trucks t ON d.truck_id = t.id
+  GROUP BY d.id
   ORDER BY d.created_at ASC;
   `;
 
@@ -40,7 +53,7 @@ const getDispatches = async (req, res) => {
 };
 
 const insertDispatch = async (req, res) => {
-  const { user_id, truck_id, loaded_date } = req.body;
+  const { user_id, truck_id, loaded_date, crew_id } = req.body;
 
   if (!user_id || !truck_id || !loaded_date) {
     return res
@@ -53,6 +66,7 @@ const insertDispatch = async (req, res) => {
       "SELECT id FROM dispatches WHERE user_id = ? AND truck_id = ?",
       [user_id, truck_id]
     );
+
     if (existing.length > 0) {
       return res
         .status(400)
@@ -64,11 +78,21 @@ const insertDispatch = async (req, res) => {
       VALUES (?, ?, ?)
     `;
     const result = await runQuery(sql, [user_id, truck_id, loaded_date]);
+    const dispatchId = result.insertId;
+
+    if (Array.isArray(crew_id) && crew_id.length > 0) {
+      const crewValues = crew_id.map((crewId) => [dispatchId, crewId]);
+      const crewSql = `
+        INSERT INTO dispatch_crew (dispatch_id, crew_id)
+        VALUES ?
+      `;
+      await runQuery(crewSql, [crewValues]);
+    }
 
     res.json({
       success: true,
       message: "Dispatch added successfully.",
-      id: result.insertId,
+      id: dispatchId,
     });
   } catch (error) {
     console.error("Error inserting dispatch:", error);
@@ -78,7 +102,7 @@ const insertDispatch = async (req, res) => {
 
 const updateDispatch = async (req, res) => {
   const { id } = req.params;
-  const { user_id, truck_id, loaded_date } = req.body;
+  const { user_id, truck_id, loaded_date, crew_id } = req.body;
 
   if (!id || !user_id || !truck_id || !loaded_date) {
     return res
@@ -119,6 +143,17 @@ const updateDispatch = async (req, res) => {
         .json({ success: false, message: "Dispatch not found." });
     }
 
+    if (Array.isArray(crew_id)) {
+      await runQuery("DELETE FROM dispatch_crew WHERE dispatch_id = ?", [id]);
+
+      for (const crewId of crew_id) {
+        await runQuery(
+          "INSERT INTO dispatch_crew (dispatch_id, crew_id) VALUES (?, ?)",
+          [id, crewId]
+        );
+      }
+    }
+
     res.json({ success: true, message: "Dispatch updated successfully." });
   } catch (error) {
     console.error("Error updating dispatch:", error);
@@ -145,7 +180,10 @@ const deleteDispatch = async (req, res) => {
         .json({ success: false, message: "Dispatch not found." });
     }
 
-    res.json({ success: true, message: "Dispatch deleted successfully." });
+    res.json({
+      success: true,
+      message: "Dispatch and related crews deleted successfully.",
+    });
   } catch (error) {
     console.error("Error deleting dispatch:", error);
     res.status(500).json({ success: false, message: "Database error" });

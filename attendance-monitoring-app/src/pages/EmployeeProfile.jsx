@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import UserProfile from "../components/UserProfile";
-import styles from "../assets/styles/Dispatch.module.css";
+import EmployeeProfileComponent from "../components/EmployeeProfileComponent";
+import styles from "../assets/styles/EmployeeProfile.module.css";
 
-const Profile = () => {
+const EmployeeProfile = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -32,23 +32,23 @@ const Profile = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className={styles.profile}>
+    <div className={styles.employee}>
       <Topbar
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         toggleButtonRef={toggleButtonRef}
       />
-      <div className={styles["profile-container"]}>
+      <div className={styles["employee-container"]}>
         <div className={styles["sidebar-container"]} ref={sidebarRef}>
           <Sidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={toggleSidebar}
           />
         </div>
-        <UserProfile />
+        <EmployeeProfileComponent />
       </div>
     </div>
   );
 };
 
-export default Profile;
+export default EmployeeProfile;

@@ -10,6 +10,7 @@ import Select from "react-select";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import Philippines from "phil-reg-prov-mun-brgy";
+import ReactCalendar from "./ReactCalendar";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -23,9 +24,8 @@ const socket = io(SOCKET_BASE_URL, {
 const UserProfile = () => {
   const [user, setUser] = useState(null);
   const [payrolls, setPayrolls] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setisViewModalOpen] = useState(false);
-  const [selectedPayroll, setSelectedPayroll] = useState(null);
   const [step, setStep] = useState(1);
   const fileInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(userIcon);
@@ -71,25 +71,25 @@ const UserProfile = () => {
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
-  useEffect(() => {
-    const fetchPayroll = async () => {
-      try {
-        const token = localStorage.getItem("token");
+  const fetchPayroll = async () => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) return;
 
-        const response = await axios.get(`${API_BASE_URL}/user-payroll`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+    try {
+      const response = await axios.get(`${API_BASE_URL}/user-payroll`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (response.data.success) {
-          setPayrolls(response.data.payroll);
-        }
-      } catch (error) {
-        console.error("Failed to fetch payroll:", error);
+      if (response.data.success) {
+        setPayrolls(response.data.payroll);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch payroll:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchPayroll();
   }, []);
 
@@ -121,6 +121,33 @@ const UserProfile = () => {
     return () => {
       socket.off("userUpdated");
     };
+  }, []);
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      try {
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (!token) return;
+
+        const res = await axios.get(`${API_BASE_URL}/user-attendance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const records = res.data.attendance || [];
+
+        const formatted = records.map((record) => ({
+          clock_in: record.clock_in,
+          clock_out: record.clock_out,
+        }));
+
+        setAttendance(formatted);
+      } catch (err) {
+        console.error("❌ Error fetching attendance:", err);
+      }
+    };
+
+    fetchAttendance();
   }, []);
 
   const [filtered, setFiltered] = useState({
@@ -537,16 +564,6 @@ const UserProfile = () => {
     }
   };
 
-  const toggleViewModal = (payroll = null) => {
-    setSelectedPayroll(payroll);
-    setisViewModalOpen(!isViewModalOpen);
-  };
-
-  const closeViewModal = () => {
-    setSelectedPayroll(null);
-    setisViewModalOpen(false);
-  };
-
   return (
     <div className={styles["profile-content"]}>
       <div className={styles["content-header-container"]}>
@@ -578,54 +595,52 @@ const UserProfile = () => {
             </div>
           </div>
           <div className={styles["personal-information-container"]}>
-            <h1 className={styles["personal-information-label"]}>
-              Personal Information
-            </h1>
             <div className={styles["personal-information-title-container"]}>
-              {[
-                { label: "First Name", value: user?.first_name },
-                { label: "Last Name", value: user?.last_name },
-                { label: "Gender", value: user?.gender },
-                {
-                  label: "Date of Birth",
-                  value: user?.birth_date
-                    ? new Date(user.birth_date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
-                    : null,
-                },
-                { label: "Email", value: user?.email },
-                {
-                  label: "Phone Number",
-                  value: user ? `+${user.phone_number}` : null,
-                },
-              ].map((info, index) => (
-                <div
-                  className={styles["personal-information-details-container"]}
-                  key={index}
-                >
-                  <p className={styles["personal-information-details-label"]}>
-                    {info.label}
-                  </p>
-                  <h1 className={styles["personal-information-details-title"]}>
-                    {info.value || "Loading..."}
-                  </h1>
-                </div>
-              ))}
+              <h1 className={styles["personal-information-label"]}>
+                Personal Information
+              </h1>
+              <div className={styles["personal-details-container"]}>
+                {[
+                  { label: "First Name", value: user?.first_name },
+                  { label: "Last Name", value: user?.last_name },
+                  { label: "Gender", value: user?.gender },
+                  {
+                    label: "Date of Birth",
+                    value: user?.birth_date
+                      ? new Date(user.birth_date).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : null,
+                  },
+                  { label: "Email", value: user?.email },
+                  {
+                    label: "Phone Number",
+                    value: user ? `+${user.phone_number}` : null,
+                  },
+                ].map((info, index) => (
+                  <div
+                    className={styles["personal-information-details-container"]}
+                    key={index}
+                  >
+                    <p className={styles["personal-information-details-label"]}>
+                      {info.label}
+                    </p>
+                    <h1
+                      className={styles["personal-information-details-title"]}
+                    >
+                      {info.value || "Loading..."}
+                    </h1>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-        <div className={styles["second-row-container"]}>
-          <div
-            className={`${styles["profile-card-container"]} ${styles["profile-card-second-row-container"]}`}
-          >
-            <div className={styles["personal-information-container"]}>
+            <div className={styles["personal-information-title-container"]}>
               <h1 className={styles["personal-information-label"]}>
                 Address Information
               </h1>
-              <div className={styles["personal-information-title-container"]}>
+              <div className={styles["personal-details-container"]}>
                 {[
                   { label: "Region", value: user?.region },
                   { label: "Province", value: user?.province },
@@ -651,6 +666,13 @@ const UserProfile = () => {
               </div>
             </div>
           </div>
+        </div>
+        <div className={styles["second-row-container"]}>
+          <div
+            className={`${styles["profile-card-container"]} ${styles["profile-card-second-row-container"]}`}
+          >
+            <ReactCalendar events={attendance} />
+          </div>
           <div
             className={`${styles["profile-card-container"]} ${styles["profile-card-table-container"]}`}
           >
@@ -661,10 +683,21 @@ const UserProfile = () => {
               <table className={styles.table}>
                 <thead className={styles.thead}>
                   <tr className={styles.htr}>
-                    <th className={styles.th}>Period</th>
+                    <th className={styles.th}>Name</th>
+                    <th className={styles.th}>Department</th>
+                    <th className={styles.th}>Rate</th>
+                    <th className={styles.th}>Hours</th>
                     <th className={styles.th}>Gross</th>
-                    <th className={styles.th}>Deduction</th>
-                    <th className={styles.th}>NetPay</th>
+                    <th className={styles.th}>SSS Contribution</th>
+                    <th className={styles.th}>SSS Loan</th>
+                    <th className={styles.th}>PAGIBIG Contribution</th>
+                    <th className={styles.th}>PAGIBIG Loan</th>
+                    <th className={styles.th}>Philhealth Contribution</th>
+                    <th className={styles.th}>Staffshop</th>
+                    <th className={styles.th}>Cash Advance</th>
+                    <th className={styles.th}>Total Deduction</th>
+                    <th className={styles.th}>Net Pay</th>
+                    <th className={styles.th}>Period</th>
                   </tr>
                 </thead>
                 <tbody className={styles.tbody}>
@@ -675,41 +708,68 @@ const UserProfile = () => {
                         key={index}
                       >
                         <td
-                          className={`${styles.td} ${styles["view-td"]}`}
-                          onClick={() => toggleViewModal(payroll)}
+                          className={`${styles.td} ${styles["full-name-td"]}`}
                         >
+                          <span
+                            className={`${styles.status} ${
+                              payroll.status === "Pending"
+                                ? styles["status-pending"]
+                                : payroll.status === "Unpaid"
+                                ? styles["status-unpaid"]
+                                : payroll.status === "Paid"
+                                ? styles["status-paid"]
+                                : ""
+                            }`}
+                          ></span>
+                          {payroll.full_name}
+                        </td>
+                        <td className={styles.td}>
+                          {payroll.department_name} {payroll.role}
+                        </td>
+                        <td className={styles.td}>₱{payroll.basic_pay_rate}</td>
+                        <td className={styles.td}>{payroll.basic_pay_days}</td>
+                        <td className={styles.td}>₱{payroll.gross}</td>
+                        <td className={styles.td}>
+                          ₱{payroll.sss_contribution}
+                        </td>
+                        <td className={styles.td}>₱{payroll.sss_loan}</td>
+                        <td className={styles.td}>
+                          ₱{payroll.pagibig_contribution}
+                        </td>
+                        <td className={styles.td}>₱{payroll.pagibig_loan}</td>
+                        <td className={styles.td}>
+                          ₱{payroll.philhealth_contribution}
+                        </td>
+                        <td className={styles.td}>₱{payroll.staff_shops}</td>
+                        <td className={styles.td}>₱{payroll.cash_advance}</td>
+                        <td className={styles.td}>
+                          ₱{payroll.total_deductions}
+                        </td>
+                        <td className={styles.td}>₱{payroll.net_pay}</td>
+                        <td className={styles.td}>
                           {new Date(payroll.period_start).toLocaleDateString(
-                            undefined,
+                            "en-US",
                             {
                               year: "numeric",
                               month: "long",
                               day: "numeric",
                             }
-                          )}
-                          -
+                          )}{" "}
+                          -{" "}
                           {new Date(payroll.period_end).toLocaleDateString(
-                            undefined,
+                            "en-US",
                             {
                               year: "numeric",
                               month: "long",
                               day: "numeric",
                             }
                           )}
-                        </td>
-                        <td className={styles.td}>
-                          ₱{payroll.gross.toLocaleString()}
-                        </td>
-                        <td className={styles.td}>
-                          ₱{payroll.total_deduction}
-                        </td>
-                        <td className={styles.td}>
-                          ₱{payroll.net_pay.toLocaleString()}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td className={styles.td} colSpan="4">
+                      <td className={styles.td} colSpan="15">
                         No payrolls available.
                       </td>
                     </tr>
@@ -1491,358 +1551,6 @@ const UserProfile = () => {
                 )}
               </div>
             </form>
-          </div>
-        </Modal>
-      )}
-      {isViewModalOpen && selectedPayroll && (
-        <Modal
-          isOpen={isViewModalOpen}
-          onClose={() => setisViewModalOpen(false)}
-        >
-          <div className={styles["modal-container"]}>
-            <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Payslip</h3>
-              <button
-                className={styles["close-modal-button"]}
-                onClick={closeViewModal}
-              >
-                <img
-                  className={styles["close-modal-icon"]}
-                  src={crossIcon}
-                  alt="Close"
-                />
-              </button>
-            </div>
-            <div className={styles["modal-view-body-container"]}>
-              <div className={styles["payroll-table-container"]}>
-                <table className={styles.table}>
-                  <thead className={styles.thead}>
-                    <tr className={styles.htr}>
-                      <th className={`${styles.pth} ${styles["pth-label"]}`}>
-                        Additional
-                      </th>
-                      <th className={styles.pth}>No. of Days</th>
-                      <th className={styles.pth}>Rate</th>
-                      <th className={styles.pth}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className={styles.tbody}>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Basic Pay</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.basic_pay_days}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.basic_pay_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.basic_pay_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Holiday</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.holiday_days}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.holiday_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.holiday_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Adjustments</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.adjustment_days}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.adjustment_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.adjustment_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Leaves</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.leave_days}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.leave_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.leave_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Management Bonus</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.management_bonus_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>13th Month Pay</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.thirteenth_month_total}
-                      </td>
-                    </tr>
-                  </tbody>
-                  <thead className={styles.thead}>
-                    <tr className={styles.htr}>
-                      <th className={`${styles.pth} ${styles["pth-label"]}`}>
-                        Overtime
-                      </th>
-                      <th className={styles.pth}>No. of Hours</th>
-                      <th className={styles.pth}>Rate</th>
-                      <th className={styles.pth}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Regular OT</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.regular_ot_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.regular_ot_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.regular_ot_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Regular OT ND</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.rest_day_ot_nd_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_nd_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_nd_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Rest Day OT</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.rest_day_ot_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Rest Day OT Excess</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.rest_day_ot_excess_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_excess_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_excess_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Rest Day OT ND</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.rest_day_ot_nd_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_nd_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.rest_day_ot_nd_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Special Holiday OT</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.special_holiday_ot_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.special_holiday_ot_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.special_holiday_ot_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Legal Hol OT</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.legal_holiday_ot_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Legal Hol OT Excess</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.legal_holiday_ot_excess_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_excess_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_excess_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Legal Hol OT ND</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.legal_holiday_ot_nd_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_nd_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.legal_holiday_ot_nd_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Night Diff</th>
-                      <td className={styles.ptd}>
-                        {selectedPayroll.night_diff_hours}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.night_diff_rate}
-                      </td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.night_diff_total}
-                      </td>
-                    </tr>
-                  </tbody>
-                  <thead className={styles.thead}>
-                    <tr className={styles.htr}>
-                      <th className={`${styles.pth} ${styles["pth-label"]}`}>
-                        Allowances
-                      </th>
-                      <th className={styles.pth}></th>
-                      <th className={styles.pth}></th>
-                      <th className={styles.pth}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className={styles.tbody}>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Basic Allowance</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.basic_allowance_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Temp Allowance</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.temp_allowance_total}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Total Earnings</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>₱{selectedPayroll.gross}</td>
-                    </tr>
-                  </tbody>
-                  <thead className={styles.thead}>
-                    <tr className={styles.htr}>
-                      <th className={`${styles.pth} ${styles["pth-label"]}`}>
-                        Deductions
-                      </th>
-                      <th className={styles.pth}></th>
-                      <th className={styles.pth}></th>
-                      <th className={styles.pth}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className={styles.tbody}>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>SSS Contribution</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.sss_contribution}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>SSS Loan</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.sss_loan}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Pag-IBIG Contribution</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.pagibig_contribution}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Pag-IBIG Loan</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.pagibig_loan}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>PhilHealth Contribution</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.philhealth_contribution}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Donation</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.donation}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Cash Advance</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.cash_advance}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Staff Shops</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>
-                        ₱{selectedPayroll.staff_shops}
-                      </td>
-                    </tr>
-                    <tr className={styles.htr}>
-                      <th className={styles.pth}>Net Pay</th>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}></td>
-                      <td className={styles.ptd}>₱{selectedPayroll.net_pay}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </div>
         </Modal>
       )}

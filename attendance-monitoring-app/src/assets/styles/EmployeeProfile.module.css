@@ -1,0 +1,10 @@
+.employee {
+  width: 100%;
+}
+.employee-container {
+  width: 100%;
+  display: flex;
+}
+.sidebar-container {
+  width: fit-content;
+}

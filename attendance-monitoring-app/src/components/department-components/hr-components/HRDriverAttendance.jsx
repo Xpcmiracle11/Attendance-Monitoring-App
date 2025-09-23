@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/HRAttendance.module.css";
+import styles from "../../../assets/styles/HRDriverAttendance.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
 import editHoverIcon from "../../../assets/images/edit-hovered-icon.svg";
@@ -22,7 +22,7 @@ import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const HRAttendance = () => {
+const HRDriverAttendance = () => {
   const [attendances, setAttendances] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [search, setSearch] = useState("");
@@ -60,13 +60,18 @@ const HRAttendance = () => {
   const fetchAttendances = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/attendances`);
+
       if (response.data.success) {
-        setAttendances(response.data.data);
+        const driverAttendances = response.data.data.filter(
+          (user) => user.role === "Driver"
+        );
+        setAttendances(driverAttendances);
       }
     } catch (error) {
-      console.error("Error fetching attendances:", error);
+      console.error("Error fetching driver attendances:", error);
     }
   };
+
   useEffect(() => {
     fetchAttendances();
   }, []);
@@ -1068,4 +1073,4 @@ const HRAttendance = () => {
   );
 };
 
-export default HRAttendance;
+export default HRDriverAttendance;

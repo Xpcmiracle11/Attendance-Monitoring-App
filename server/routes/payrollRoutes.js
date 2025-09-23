@@ -5,6 +5,7 @@ const {
   updatePayroll,
   confirmPayroll,
   deletePayroll,
+  getArchivePayrolls,
 } = require("../controllers/payrollController.js");
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.post("/insert-payroll", insertPayrolls);
 router.put("/update-payroll/:id", updatePayroll);
 router.put("/confirm-payroll/:id", confirmPayroll);
 router.delete("/delete-payroll/:id", deletePayroll);
+router.get("/archive-payrolls", getArchivePayrolls);
 
 module.exports = router;

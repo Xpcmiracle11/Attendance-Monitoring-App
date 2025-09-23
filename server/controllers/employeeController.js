@@ -1,71 +1,8 @@
 const db = require("../config/db");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const tokenBlacklist = new Set();
 require("dotenv").config();
 
-const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "All fields are required" });
-  }
-
-  try {
-    const sql = "SELECT * FROM users WHERE email = ?";
-    const [results] = await db.query(sql, [email]);
-
-    if (results.length === 0) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Email does not exist." });
-    }
-
-    const user = results[0];
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password.",
-      });
-    }
-
-    const attendanceQuery = `
-      SELECT id FROM attendance_details 
-      WHERE user_id = ? 
-      AND DATE(clock_in) = CURDATE()
-      AND clock_in IS NOT NULL
-      AND clock_out IS NULL
-      LIMIT 1
-    `;
-    const [attendance] = await db.query(attendanceQuery, [user.id]);
-
-    if (attendance.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Login not allowed. Either no clock-in or already clocked out today.",
-      });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRY || "1d" }
-    );
-
-    res.json({ success: true, token });
-  } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-const getUserDetails = async (req, res) => {
-  console.log("📥 /api/user hit, user from token:", req.user);
+const getEmployeeDetails = async (req, res) => {
+  const { id } = req.params;
 
   try {
     const [results] = await db.query(
@@ -96,31 +33,29 @@ const getUserDetails = async (req, res) => {
       FROM users 
       LEFT JOIN departments ON users.department_id = departments.id 
       WHERE users.id = ?`,
-      [req.user.id]
+      [id]
     );
-
-    console.log("📤 DB query returned:", results);
 
     if (!results.length) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: "Employee not found" });
     }
 
-    let user = results[0];
-    user.image_file_path = user.image_file_name
-      ? `${process.env.API_BASE_URL}/uploads/${user.image_file_name}`
+    let employee = results[0];
+    employee.image_file_path = employee.image_file_name
+      ? `${process.env.API_BASE_URL}/uploads/${employee.image_file_name}`
       : null;
 
-    res.json({ success: true, user });
+    res.json({ success: true, user: employee });
   } catch (error) {
-    console.error("❌ Error in getUserDetails:", error.message);
+    console.error("❌ Error in getEmployeeDetails:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-const getUserPayroll = async (req, res) => {
-  console.log("📥 /api/user-payroll hit, user from token:", req.user);
+const getEmployeePayroll = async (req, res) => {
+  const { id } = req.params;
 
   try {
     const [results] = await db.query(
@@ -175,44 +110,26 @@ const getUserPayroll = async (req, res) => {
       LEFT JOIN departments d ON u.department_id = d.id
       WHERE p.user_id = ? AND p.status = 'Paid'
       ORDER BY p.created_at DESC`,
-      [req.user.id]
+      [id]
     );
 
-    console.log("📤 DB query returned:", results);
-
     if (!results.length) {
-      return res.status(404).json({
-        success: false,
-        message: "Payroll not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Payroll not found" });
     }
 
     res.json({ success: true, payroll: results });
   } catch (error) {
-    console.error("❌ Error in getUserPayroll:", error.message);
+    console.error("❌ Error in getEmployeePayroll:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-const getUserAttendance = async (req, res) => {
+const getEmployeeAttendance = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No token provided." });
-    }
-
-    if (tokenBlacklist.has(token)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Token has been invalidated." });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-
     const attendanceSql = `
       SELECT 
         id, user_id, 
@@ -226,55 +143,24 @@ const getUserAttendance = async (req, res) => {
       ORDER BY clock_in DESC
     `;
 
-    const [attendance] = await db.query(attendanceSql, [decoded.id]);
+    const [attendance] = await db.query(attendanceSql, [id]);
 
     if (attendance.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No attendance records found for this user.",
+        message: "No attendance records found for this employee.",
       });
     }
 
     res.json({ success: true, attendance });
   } catch (error) {
-    console.error("❌ Error in getUserAttendance:", error.message);
-
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Session expired. Please log-in again.",
-      });
-    }
-
-    return res.status(500).json({ success: false, message: "Server error." });
+    console.error("❌ Error in getEmployeeAttendance:", error.message);
+    res.status(500).json({ success: false, message: "Server error." });
   }
-};
-
-const logoutUser = (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) {
-    return res
-      .status(400)
-      .json({ success: false, message: "No token provided." });
-  }
-
-  tokenBlacklist.add(token);
-
-  let userId;
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    userId = decoded.id;
-  } catch (error) {
-    return res.status(401).json({ success: false, message: "Invalid token." });
-  }
-  res.json({ success: true, message: "Logged out successfully." });
 };
 
 module.exports = {
-  getUserDetails,
-  getUserPayroll,
-  getUserAttendance,
-  loginUser,
-  logoutUser,
+  getEmployeeDetails,
+  getEmployeePayroll,
+  getEmployeeAttendance,
 };

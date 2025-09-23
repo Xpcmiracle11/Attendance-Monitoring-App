@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import UserProfile from "../components/UserProfile";
-import styles from "../assets/styles/Dispatch.module.css";
+import HRAdminAttendance from "../components/department-components/hr-components/HRAdminAttendance";
+import styles from "../assets/styles/Attendance.module.css";
 
-const Profile = () => {
+const AdminAttendance = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
   };
@@ -32,23 +33,18 @@ const Profile = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className={styles.profile}>
+    <div className={styles.attendance}>
       <Topbar
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         toggleButtonRef={toggleButtonRef}
       />
-      <div className={styles["profile-container"]}>
-        <div className={styles["sidebar-container"]} ref={sidebarRef}>
-          <Sidebar
-            isSidebarOpen={isSidebarOpen}
-            toggleSidebar={toggleSidebar}
-          />
-        </div>
-        <UserProfile />
+      <div className={styles["attendance-container"]} ref={sidebarRef}>
+        <Sidebar isSidebarOpen={isSidebarOpen} />
       </div>
+      <HRAdminAttendance />
     </div>
   );
 };
 
-export default Profile;
+export default AdminAttendance;

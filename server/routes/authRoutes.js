@@ -3,14 +3,15 @@ const {
   loginUser,
   getUserDetails,
   getUserPayroll,
+  getUserAttendance,
   logoutUser,
 } = require("../controllers/authController");
 const { authenticateUser } = require("../middleware/authMiddleware");
 
 const router = express.Router();
-console.log("🔧 Route hit: GET /user");
 router.get("/user", authenticateUser, getUserDetails);
 router.get("/user-payroll", authenticateUser, getUserPayroll);
+router.get("/user-attendance", authenticateUser, getUserAttendance);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
 

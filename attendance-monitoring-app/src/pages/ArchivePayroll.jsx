@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import styles from "../assets/styles/Payroll.module.css";
-import FINPayroll from "../components/department-components/fin-components/FINPayroll";
-import HRPayroll from "../components/department-components/hr-components/HRPayroll";
+import styles from "../assets/styles/ArchivePayroll.module.css";
+import FINArchivePayroll from "../components/department-components/fin-components/FINArchivePayroll";
+import HRArchivePayroll from "../components/department-components/hr-components/HRArchivePayroll";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const Payroll = () => {
+const ArchivePayroll = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userDepartment, setUserDepartment] = useState(null);
 
@@ -73,9 +73,9 @@ const Payroll = () => {
           />
         </div>
         {userDepartment === "Finance" ? (
-          <FINPayroll />
+          <FINArchivePayroll />
         ) : userDepartment === "Human Resources" ? (
-          <HRPayroll />
+          <HRArchivePayroll />
         ) : (
           ""
         )}
@@ -84,4 +84,4 @@ const Payroll = () => {
   );
 };
 
-export default Payroll;
+export default ArchivePayroll;

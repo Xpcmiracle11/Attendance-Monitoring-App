@@ -74,11 +74,6 @@ const Login = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
-
   return (
     <div className={styles.login}>
       <div className={styles["login-card"]}>

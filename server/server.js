@@ -22,6 +22,7 @@ const payrollRoutes = require("./routes/payrollRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const chartRoutes = require("./routes/chartRoutes");
 const dispatchRoutes = require("./routes/dispatchRoutes");
+const employeeRoutes = require("./routes/employeeRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -73,7 +74,7 @@ app.use("/api/", payrollRoutes);
 app.use("/api/", holidayRoutes);
 app.use("/api/", chartRoutes);
 app.use("/api/", dispatchRoutes);
-
+app.use("/api/", employeeRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });

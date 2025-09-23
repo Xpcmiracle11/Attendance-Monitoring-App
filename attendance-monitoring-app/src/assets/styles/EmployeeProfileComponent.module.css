@@ -62,29 +62,6 @@
   text-align: center;
   color: var(--text-secondary);
 }
-.edit-profile-button-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-.edit-profile-button {
-  width: 130px;
-  padding: 10px 14px;
-  font-size: 16px;
-  border-radius: 6px;
-  background-color: var(--primary-blue);
-  border: 1px solid var(--primary-blue);
-  color: var(--background);
-  font-family: var(--font-secondary);
-  transition: 0.3s ease-in-out;
-  cursor: pointer;
-}
-.edit-profile-button:hover,
-.edit-profile-button:active {
-  box-shadow: 0 0 4px rgba(0, 123, 255, 0.8);
-  background-color: rgba(0, 123, 255, 0.8);
-  border: 1px solid rgba(0, 123, 255, 0.8);
-}
 .personal-information-container {
   width: 100%;
   display: flex;

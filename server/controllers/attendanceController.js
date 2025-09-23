@@ -22,24 +22,113 @@ const getAttendance = async (req, res) => {
   try {
     const sql = `
       SELECT 
-        CONCAT_WS(' ', u.first_name, 
-          IFNULL(CONCAT(SUBSTRING(u.middle_name, 1, 1), '.'), ''), 
-          u.last_name
-        ) AS full_name,
-        ad.id AS attendance_id,
-        ad.user_id,
-        DATE_FORMAT(ad.clock_in, '%Y-%m-%dT%H:%i:%s') AS clock_in,
-        DATE_FORMAT(ad.clock_out, '%Y-%m-%dT%H:%i:%s') AS clock_out,
-        DATE_FORMAT(ad.clock_in, '%W, %M %e, %Y %h:%i:%s %p') AS clock_in_formatted,
-        DATE_FORMAT(ad.clock_out, '%W, %M %e, %Y %h:%i:%s %p') AS clock_out_formatted,
-        ad.status,
-        ad.created_at,
-        u.salary,
-        u.image_file_name
-      FROM attendance_details ad
-      JOIN users u ON ad.user_id = u.id
-      WHERE u.role NOT IN ('Manager', 'Corporate')
-      ORDER BY ad.clock_in DESC;
+      CONCAT_WS(' ', u.first_name, 
+        IFNULL(CONCAT(SUBSTRING(u.middle_name, 1, 1), '.'), ''), 
+        u.last_name
+      ) AS full_name,
+      u.role,
+      ad.id AS attendance_id,
+      ad.user_id,
+      DATE_FORMAT(ad.clock_in, '%Y-%m-%dT%H:%i:%s') AS clock_in,
+      DATE_FORMAT(ad.clock_out, '%Y-%m-%dT%H:%i:%s') AS clock_out,
+      DATE_FORMAT(ad.clock_in, '%W, %M %e, %Y %h:%i:%s %p') AS clock_in_formatted,
+      DATE_FORMAT(ad.clock_out, '%W, %M %e, %Y %h:%i:%s %p') AS clock_out_formatted,
+      CONCAT(
+        LPAD(
+          FLOOR(
+            GREATEST((
+              CASE
+                WHEN TIME(ad.clock_out) BETWEEN '12:00:00' AND '13:00:00' THEN 
+                  TIMESTAMPDIFF(SECOND, 
+                    GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                    STR_TO_DATE(CONCAT(DATE(ad.clock_out), ' 12:00:00'), '%Y-%m-%d %H:%i:%s')
+                  )
+                WHEN TIME(ad.clock_in) BETWEEN '12:00:00' AND '13:00:00' THEN 
+                  TIMESTAMPDIFF(SECOND,
+                    STR_TO_DATE(CONCAT(DATE(ad.clock_in), ' 13:00:00'), '%Y-%m-%d %H:%i:%s'),
+                    LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                  )
+                WHEN TIME(ad.clock_in) < '12:00:00' AND TIME(ad.clock_out) >= '13:00:00' THEN 
+                  TIMESTAMPDIFF(SECOND, 
+                    GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                    LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                  ) - 3600
+                ELSE 
+                  TIMESTAMPDIFF(SECOND, 
+                    GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                    LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                  )
+              END
+            ), 0) / 3600
+          ), 2, '0'
+        ), ':',
+        LPAD(
+          FLOOR(
+            MOD(
+              GREATEST((
+                CASE
+                  WHEN TIME(ad.clock_out) BETWEEN '12:00:00' AND '13:00:00' THEN 
+                    TIMESTAMPDIFF(SECOND, 
+                      GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                      STR_TO_DATE(CONCAT(DATE(ad.clock_out), ' 12:00:00'), '%Y-%m-%d %H:%i:%s')
+                    )
+                  WHEN TIME(ad.clock_in) BETWEEN '12:00:00' AND '13:00:00' THEN 
+                    TIMESTAMPDIFF(SECOND,
+                      STR_TO_DATE(CONCAT(DATE(ad.clock_in), ' 13:00:00'), '%Y-%m-%d %H:%i:%s'),
+                      LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                    )
+                  WHEN TIME(ad.clock_in) < '12:00:00' AND TIME(ad.clock_out) >= '13:00:00' THEN 
+                    TIMESTAMPDIFF(SECOND, 
+                      GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                      LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                    ) - 3600
+                  ELSE 
+                    TIMESTAMPDIFF(SECOND, 
+                      GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                      LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+                    )
+                END
+              ), 0), 3600
+            ) / 60
+          ), 2, '0'
+        )
+      ) AS duration,
+      ROUND(u.salary / 8, 2) AS rate,
+      ROUND(
+        ((u.salary / 8) / 3600) * 
+        GREATEST((
+          CASE
+            WHEN TIME(ad.clock_out) BETWEEN '12:00:00' AND '13:00:00' THEN 
+              TIMESTAMPDIFF(SECOND, 
+                GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                STR_TO_DATE(CONCAT(DATE(ad.clock_out), ' 12:00:00'), '%Y-%m-%d %H:%i:%s')
+              )
+            WHEN TIME(ad.clock_in) BETWEEN '12:00:00' AND '13:00:00' THEN 
+              TIMESTAMPDIFF(SECOND,
+                STR_TO_DATE(CONCAT(DATE(ad.clock_in), ' 13:00:00'), '%Y-%m-%d %H:%i:%s'),
+                LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+              )
+            WHEN TIME(ad.clock_in) < '12:00:00' AND TIME(ad.clock_out) >= '13:00:00' THEN 
+              TIMESTAMPDIFF(SECOND, 
+                GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+              ) - 3600
+            ELSE 
+              TIMESTAMPDIFF(SECOND, 
+                GREATEST(ad.clock_in, CONCAT(DATE(ad.clock_in), ' 08:00:00')),
+                LEAST(ad.clock_out, CONCAT(DATE(ad.clock_in), ' 17:00:00'))
+              )
+          END
+        ), 0),
+        2
+      ) AS salary,
+      ad.status,
+      ad.created_at,
+      u.image_file_name
+    FROM attendance_details ad
+    LEFT JOIN users u ON ad.user_id = u.id
+    WHERE u.id IS NOT NULL
+    ORDER BY ad.clock_in DESC;
     `;
     const results = await runQuery(sql);
 

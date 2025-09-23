@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "../assets/styles/Calendar.module.css";
 
-const CustomCalendar = ({ dateAttended }) => {
+const Calendar = ({ dateAttended }) => {
   const attendedDates = dateAttended
     ? dateAttended.split(",").map((entry) => {
         const [date, hours] = entry.trim().split("|");
@@ -32,4 +32,4 @@ const CustomCalendar = ({ dateAttended }) => {
   );
 };
 
-export default CustomCalendar;
+export default Calendar;

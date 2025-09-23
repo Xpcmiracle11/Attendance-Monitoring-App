@@ -133,6 +133,12 @@ const Sidebar = ({ isSidebarOpen }) => {
     }
   }, []);
 
+  const [openMenu, setOpenMenu] = useState(null);
+
+  const toggleMenu = (menuName) => {
+    setOpenMenu((prev) => (prev === menuName ? null : menuName));
+  };
+
   return (
     <div
       className={`${styles.sidebar} ${
@@ -145,9 +151,13 @@ const Sidebar = ({ isSidebarOpen }) => {
             <h1 className={styles["label-title"]}>EHD</h1>
             <h3 className={styles["label-sub-title"]}>Logistics</h3>
           </div>
-          <ul className={styles["navigation-option-container"]}>
+          <ul className={styles["navigation-menu"]}>
             {filteredLinks.map((link, index) => {
-              const isActive = location.pathname === link.path;
+              const isChildActive = link.children?.some(
+                (child) => location.pathname === child.path
+              );
+
+              const isActive = location.pathname === link.path || isChildActive;
               const isHovered = hoveredIndex === index;
               const iconSrc =
                 isActive || isHovered
@@ -158,6 +168,173 @@ const Sidebar = ({ isSidebarOpen }) => {
                   ? styles["active-icon"]
                   : styles["inactive-icon"];
 
+              const isManager =
+                user?.role === "Manager" &&
+                (user?.department_name === "Human Resources" ||
+                  user?.department_name === "Finance");
+              if (link.name === "Payroll") {
+                const isMenuOpen = openMenu === "Payroll" || isChildActive;
+
+                if (isManager) {
+                  return (
+                    <li
+                      key={index}
+                      className={`${styles["navigation-option-dropdown"]} ${
+                        isChildActive ? styles.active : ""
+                      }`}
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      <div
+                        className={`${styles["navigation-link"]} ${
+                          isChildActive ? styles.active : ""
+                        }`}
+                        onClick={() => toggleMenu("Payroll")}
+                      >
+                        <img
+                          className={`${styles["navigation-icon"]} ${iconClass}`}
+                          src={iconSrc}
+                          alt={link.name}
+                        />
+                        {link.name}
+                        <span
+                          className={`${styles.arrow} ${
+                            isMenuOpen
+                              ? styles["open-menu"]
+                              : styles["closed-menu"]
+                          }`}
+                        >
+                          &gt;
+                        </span>
+                      </div>
+                      {isMenuOpen && (
+                        <ul className={styles["submenu"]}>
+                          {link.children
+                            .filter(
+                              (child) =>
+                                child.name === "Current" ||
+                                (child.name === "Archive" && isManager)
+                            )
+                            .map((child, childIndex) => {
+                              const isChildItemActive =
+                                location.pathname === child.path;
+                              return (
+                                <li
+                                  key={childIndex}
+                                  className={`${styles["submenu-item"]} ${
+                                    isChildItemActive ? styles.active : ""
+                                  }`}
+                                >
+                                  <Link
+                                    to={child.path}
+                                    className={`${
+                                      styles["navigation-link-dropdown"]
+                                    } ${
+                                      isChildItemActive ? styles.active : ""
+                                    }`}
+                                  >
+                                    {child.name}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                } else {
+                  const currentPayroll = link.children.find(
+                    (child) => child.name === "Current"
+                  );
+                  const isCurrentActive =
+                    location.pathname === currentPayroll?.path;
+
+                  return (
+                    <li
+                      key={index}
+                      className={`${styles["navigation-option"]} ${
+                        isCurrentActive ? styles.active : ""
+                      }`}
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      <Link
+                        to={currentPayroll?.path || "#"}
+                        className={styles["navigation-link"]}
+                      >
+                        <img
+                          className={`${styles["navigation-icon"]} ${iconClass}`}
+                          src={iconSrc}
+                          alt="Payroll"
+                        />
+                        Payroll
+                      </Link>
+                    </li>
+                  );
+                }
+              }
+              if (link.name === "Attendance" && link.children?.length > 0) {
+                const isMenuOpen = openMenu === "Attendance" || isChildActive;
+
+                return (
+                  <li
+                    key={index}
+                    className={`${styles["navigation-option-dropdown"]} ${
+                      isChildActive ? styles.active : ""
+                    }`}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <div
+                      className={`${styles["navigation-link"]} ${
+                        isChildActive ? styles.active : ""
+                      }`}
+                      onClick={() => toggleMenu("Attendance")}
+                    >
+                      <img
+                        className={`${styles["navigation-icon"]} ${iconClass}`}
+                        src={iconSrc}
+                        alt={link.name}
+                      />
+                      {link.name}
+                      <span
+                        className={`${styles.arrow} ${
+                          isMenuOpen
+                            ? styles["open-menu"]
+                            : styles["closed-menu"]
+                        }`}
+                      >
+                        &gt;
+                      </span>
+                    </div>
+                    {isMenuOpen && (
+                      <ul className={styles["submenu"]}>
+                        {link.children.map((child, childIndex) => {
+                          const isChildItemActive =
+                            location.pathname === child.path;
+                          return (
+                            <li
+                              key={childIndex}
+                              className={`${styles["submenu-item"]} ${
+                                isChildItemActive ? styles.active : ""
+                              }`}
+                            >
+                              <Link
+                                to={child.path}
+                                className={`${
+                                  styles["navigation-link-dropdown"]
+                                } ${isChildItemActive ? styles.active : ""}`}
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
               return (
                 <li
                   key={index}

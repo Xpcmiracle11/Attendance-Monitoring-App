@@ -374,30 +374,52 @@
 .pth:nth-child(4) {
   width: 100px;
 }
-.th:nth-child(1) {
+.th:nth-child(1),
+.th:nth-child(2),
+.th:nth-child(3),
+.th:nth-child(4),
+.th:nth-child(5),
+.th:nth-child(6),
+.th:nth-child(7),
+.th:nth-child(8),
+.th:nth-child(9),
+.th:nth-child(10),
+.th:nth-child(11),
+.th:nth-child(12),
+.th:nth-child(13),
+.th:nth-child(14),
+.th:nth-child(15) {
   width: 200px;
 }
-.th:nth-child(2) {
-  width: 100px;
-}
-.th:nth-child(3) {
-  width: 100px;
-}
-.th:nth-child(4) {
-  width: 100px;
-}
-.th:nth-child(5) {
-  width: 100px;
-}
-.th:nth-child(6) {
-  width: 150px;
-}
-.th:nth-child(7) {
+.th:nth-child(16) {
   width: 150px;
   text-align: center;
 }
 .th:nth-child(1) {
   background: var(--borders);
+}
+.full-name-td {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: center;
+}
+.status {
+  width: 10px;
+  height: 10px;
+  border-radius: 60%;
+}
+.status-pending {
+  background-color: var(--tertiary-yellow);
+  border: 1px solid var(--tertiary-yellow);
+}
+.status-unpaid {
+  background-color: var(--secondary-green);
+  border: 1px solid var(--secondary-green);
+}
+.status-paid {
+  background-color: var(--primary-blue);
+  border: 1px solid var(--primary-blue);
 }
 .td,
 .ptd {
@@ -595,8 +617,20 @@
   flex-direction: column;
   gap: 1rem;
 }
+.payroll-employee-name-container {
+  width: 100%;
+}
+.payroll-employee-name {
+  font-size: 18px;
+  font-family: var(--font-secondary);
+  font-weight: normal;
+  color: var(--text-secondary);
+}
 .payroll-table-container {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   height: 450px;
   overflow-x: auto;
 }

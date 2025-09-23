@@ -13,6 +13,21 @@ const getUserCount = async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE role = 'Driver') AS total_drivers
     `;
 
+    const employeeListSQL = `
+    SELECT 
+      u.id, 
+      u.first_name, 
+      u.last_name, 
+      u.role, 
+      u.department_id,
+      d.name AS department_name,
+      u.company,
+      u.branch
+    FROM users u
+    LEFT JOIN departments d ON u.department_id = d.id
+    ORDER BY u.role, u.first_name, u.last_name
+  `;
+
     const stackedChartSQL = `
       SELECT
         ym.y,
@@ -75,6 +90,7 @@ const getUserCount = async (req, res) => {
     const [chart] = await db.query(stackedChartSQL);
     const [rateResults] = await db.query(attendanceRateSQL, [today]);
     const [dailyAttendance] = await db.query(dailyAttendanceSQL);
+    const [employees] = await db.query(employeeListSQL);
 
     const { total, present } = rateResults[0];
     const attendanceRate =
@@ -92,6 +108,7 @@ const getUserCount = async (req, res) => {
           rate: `${attendanceRate}%`,
         },
         dailyAttendance,
+        employees,
       },
     });
   } catch (error) {
@@ -100,4 +117,29 @@ const getUserCount = async (req, res) => {
   }
 };
 
-module.exports = { getUserCount };
+const geyPayrollGross = async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        YEAR(p.period_start) AS year,
+        MONTH(p.period_start) AS month,
+        SUM(p.gross) AS total_gross
+      FROM payrolls p
+      WHERE p.status = 'Paid'
+      GROUP BY YEAR(p.period_start), MONTH(p.period_start)
+      ORDER BY year, month;
+    `;
+
+    const [rows] = await db.query(sql);
+
+    res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error in getMonthlyPayrollGross:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+module.exports = { getUserCount, geyPayrollGross };

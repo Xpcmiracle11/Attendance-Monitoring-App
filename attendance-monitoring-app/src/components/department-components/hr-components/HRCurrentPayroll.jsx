@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/FINPayroll.module.css";
+import Calendar from "../../Calendar";
+import styles from "../../../assets/styles/HRCurrentPayroll.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
-import checkIcon from "../../../assets/images/check-icon.svg";
-import checkHoverIcon from "../../../assets/images/check-hovered-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
 import editHoverIcon from "../../../assets/images/edit-hovered-icon.svg";
 import deleteIcon from "../../../assets/images/delete-icon.svg";
@@ -27,7 +26,7 @@ import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const FINPayroll = () => {
+const HRCurrentPayroll = () => {
   const [payrolls, setPayrolls] = useState([]);
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
@@ -39,9 +38,9 @@ const FINPayroll = () => {
   const [tempSortOrder, setTempSortOrder] = useState("");
   const [appliedFromDate, setAppliedFromDate] = useState("");
   const [appliedToDate, setAppliedToDate] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedPayroll, setSelectedPayroll] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -52,7 +51,6 @@ const FINPayroll = () => {
   const filterRef = useRef(null);
   const sortRef = useRef(null);
   const exportRef = useRef(null);
-  const [isCheckHovered, setIsCheckHovered] = useState(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
   const [manualOverrides, setManualOverrides] = React.useState({
@@ -68,9 +66,12 @@ const FINPayroll = () => {
     basicPayDays: 0,
     basicPayRate: 0,
     basicPayTotal: 0,
-    holidayDays: 0,
-    holidayRate: 0,
-    holidayTotal: 0,
+    legalHolidayDays: 0,
+    legalHolidayRate: 0,
+    legalHolidayTotal: 0,
+    specialHolidayDays: 0,
+    specialHolidayRate: 0,
+    specialHolidayTotal: 0,
     adjustmentDays: 0,
     adjustmentRate: 0,
     adjustmentTotal: 0,
@@ -130,9 +131,12 @@ const FINPayroll = () => {
     basicPayDays: 0,
     basicPayRate: 0,
     basicPayTotal: 0,
-    holidayDays: 0,
-    holidayRate: 0,
-    holidayTotal: 0,
+    legalHolidayDays: 0,
+    legalHolidayRate: 0,
+    legalHolidayTotal: 0,
+    specialHolidayDays: 0,
+    specialHolidayRate: 0,
+    specialHolidayTotal: 0,
     adjustmentDays: 0,
     adjustmentRate: 0,
     adjustmentTotal: 0,
@@ -193,7 +197,10 @@ const FINPayroll = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/payrolls`);
       if (response.data.success) {
-        setPayrolls(response.data.data);
+        const paidPayrolls = response.data.data.filter(
+          (payroll) => payroll.status !== "Paid"
+        );
+        setPayrolls(paidPayrolls);
       }
     } catch (error) {
       console.error("Error fetching payrolls:", error);
@@ -271,31 +278,43 @@ const FINPayroll = () => {
 
   const tableColumn = [
     "ID",
-    "Employee Name",
+    "Name",
     "Department",
-    "Role",
-    "SSS",
-    "PAG-IBIG",
-    "PhilHealth",
+    "Rate",
+    "Hours",
     "Gross",
+    "SSS Contribution",
+    "SSS Loan",
+    "PAGIBIG Contribution",
+    "PAGIBIG Loan",
+    "Philhealth Contribution",
+    "Staffshop",
+    "Cash Advance",
+    "Total Deductions",
     "Net Pay",
-    "Status",
-    "Created At",
+    "Period",
   ];
 
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
-      "Employee Name": item.full_name || "",
-      Department: item.department || "",
-      Role: item.role || "",
-      SSS: item.sss || "",
-      "PAG-IBIG": item.pag_ibig || "",
-      PhilHealth: item.phillhealth || "",
+      Name: item.full_name || "",
+      Department: `${item.department_name} ${item.role}` || "",
+      Rate: item.basic_pay_rate || "",
+      Hours: item.basic_pay_days || "",
       Gross: item.gross || "",
+      "SSS Contribution": item.sss_contribution || "",
+      "SSS Loan": item.sss_loan || "",
+      "PAGIBIG Contribution": item.pagibig_contribution || "",
+      "PAGIBIG Loan": item.pagibig_loan || "",
+      "Philhealth Contribution": item.philhealth_contribution || "",
+      Staffshop: item.staff_shops || "",
+      "Cash Advance": item.cash_advance || "",
+      "Total Deductions": item.total_deductions || "",
       "Net Pay": item.net_pay || "",
-      Status: item.status || "",
-      "Created At": formatDate(item.created_at),
+      Period:
+        `${formatDate(item.period_start)} - ${formatDate(item.period_end)}` ||
+        "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
@@ -321,17 +340,21 @@ const FINPayroll = () => {
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.full_name || "",
-      item.department || "",
-      item.role || "",
-      item.sss || "",
-      item.pag_ibig || "",
-      item.phillhealth || "",
-      item.gross || "",
-      item.net_pay || "",
-      item.status || "",
-      item.pay_day || "",
-      formatDate(item.created_at),
+      item.full_name,
+      `${item.department_name} ${item.role}`,
+      item.basic_pay_rate,
+      item.basic_pay_days,
+      item.gross,
+      item.sss_contribution,
+      item.sss_loan,
+      item.pagibig_contribution,
+      item.pagibig_loan,
+      item.philhealth_contribution,
+      item.staff_shops,
+      item.cash_advance,
+      item.total_deductions,
+      item.net_pay,
+      `${formatDate(item.period_start)} ${formatDate(item.period_end)}`,
     ]);
 
     autoTable(doc, {
@@ -346,29 +369,41 @@ const FINPayroll = () => {
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
-      "Full Name": "full_name",
+      Name: "full_name",
       Department: "department",
-      Role: "role",
-      SSS: "sss",
-      "PAG-IBIG": "pag_ibig",
+      Rate: "basic_pay_rate",
+      Hours: "basic_pay_days",
       Gross: "gross",
+      "SSS Contribution": "sss_contribution",
+      "SSS Loan": "sss_loan",
+      "PAGIBIG Contribution": "pagibig_contribution",
+      "PAGIBIG Loan": "pagibig_loan",
+      "Philhealth Contribution": "philhealth_contribution",
+      Staffshop: "staff_shop",
+      "Cash Advance": "cash_advance",
+      "Total Deductions": "total_deductions",
       "Net Pay": "net_pay",
-      Status: "status",
-      "Created At": "created_at",
+      Period: "period",
     };
 
     const tableRows = data.map((item, index) => {
       return new TableRow({
         children: tableColumn.map((column) => {
-          const key = columnKeyMap[column];
-          const value =
-            column === "ID"
-              ? (index + 1).toString()
-              : column === "Created At"
-              ? formatDate(item[key])
-              : item[key]
-              ? item[key].toString()
-              : "";
+          let value = "";
+
+          if (column === "ID") {
+            value = (index + 1).toString();
+          } else if (column === "Department") {
+            value = `${item.department_name || ""} ${item.role || ""}`;
+          } else if (column === "Period") {
+            value = `${formatDate(item.period_start)} - ${formatDate(
+              item.period_end
+            )}`;
+          } else {
+            const key = columnKeyMap[column];
+            value = item[key] ? item[key].toString() : "";
+          }
+
           return new TableCell({
             children: [new Paragraph(value)],
           });
@@ -436,6 +471,35 @@ const FINPayroll = () => {
 
   const handleFileTypeSelect = (type) => {
     setExportFileType(type);
+  };
+
+  const toggleAddModal = () => {
+    setIsAddModalOpen(!isAddModalOpen);
+    setErrors({
+      payrollPeriod: "",
+      role: "",
+      periodStart: "",
+      periodEnd: "",
+      apiError: "",
+    });
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setPayrollsData({
+      payrollPeriod: "",
+      role: "",
+      periodStart: "",
+      periodEnd: "",
+    });
+
+    setErrors({
+      payrollPeriod: "",
+      role: "",
+      periodStart: "",
+      periodEnd: "",
+      apiError: "",
+    });
   };
 
   useEffect(() => {
@@ -572,7 +636,14 @@ const FINPayroll = () => {
 
       const totals = {
         basicPayTotal: calculateTotal("basicPayDays", "basicPayRate"),
-        holidayTotal: calculateTotal("holidayDays", "holidayRate"),
+        legalHolidayTotal: calculateTotal(
+          "legalHolidayDays",
+          "legalHolidayRate"
+        ),
+        specialHolidayTotal: calculateTotal(
+          "specialHolidayDays",
+          "specialHolidayRate"
+        ),
         adjustmentTotal: calculateTotal("adjustmentDays", "adjustmentRate"),
         leaveTotal: calculateTotal("leaveDays", "leaveRate"),
         regularOtTotal: calculateTotal("regularOtHours", "regularOtRate"),
@@ -661,18 +732,102 @@ const FINPayroll = () => {
     }));
   };
 
+  const handleAddPayroll = async (e) => {
+    e.preventDefault();
+    setErrors({
+      payrollPeriod: "",
+      role: "",
+      periodStart: "",
+      periodEnd: "",
+      apiError: "",
+    });
+
+    let hasError = false;
+
+    if (!payrollsData.payrollPeriod.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        payrollPeriod: "Payroll period is required.",
+      }));
+      hasError = true;
+    }
+
+    if (!payrollsData.role.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        role: "Role is required.",
+      }));
+      hasError = true;
+    }
+
+    if (!payrollsData.periodStart.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        periodStart: "Start period is required.",
+      }));
+      hasError = true;
+    }
+
+    if (!payrollsData.periodEnd.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        periodEnd: "End period is required.",
+      }));
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/insert-payroll`, {
+        payroll_period: payrollsData.payrollPeriod,
+        role: payrollsData.role,
+        period_start: payrollsData.periodStart,
+        period_end: payrollsData.periodEnd,
+      });
+      if (response.data.success) {
+        setPayrolls((prevPayrolls) => [
+          ...prevPayrolls,
+          {
+            payroll_period: payrollsData.payrollPeriod,
+            role: payrollsData.role,
+            period_start: payrollsData.periodStart,
+            period_end: payrollsData.periodEnd,
+          },
+        ]);
+        fetchPayrolls();
+        closeAddModal();
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          apiError: response.data.message || "An error occurred.",
+        }));
+      }
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        apiError: error.response?.data?.message || "Something went wrong.",
+      }));
+    }
+  };
+
   const toggleEditModal = (payroll = null) => {
     setSelectedPayroll(payroll);
     setPayrollsData({
+      fullName: payroll?.full_name || "",
+      dateAttended: payroll?.date_attended || "",
       payrollPeriod: payroll?.payroll_period || "",
       periodStart: payroll?.payroll_start || "",
       periodEnd: payroll?.payroll_end || "",
       basicPayDays: payroll?.basic_pay_days || 0,
       basicPayRate: payroll?.basic_pay_rate || 0,
       basicPayTotal: payroll?.basic_pay_total || 0,
-      holidayDays: payroll?.holiday_days || 0,
-      holidayRate: payroll?.holiday_rate || 0,
-      holidayTotal: payroll?.holiday_total || 0,
+      legalHolidayDays: payroll?.legal_holiday_days || 0,
+      legalHolidayRate: payroll?.legal_holiday_rate || 0,
+      legalHolidayTotal: payroll?.legal_holiday_total || 0,
+      specialHolidayDays: payroll?.special_holiday_days || 0,
+      specialHolidayRate: payroll?.special_holiday_rate || 0,
+      specialHolidayTotal: payroll?.special_holiday_total || 0,
       adjustmentDays: payroll?.adjustment_days || 0,
       adjustmentRate: payroll?.adjustment_rate || 0,
       adjustmentTotal: payroll?.adjustment_total || 0,
@@ -732,9 +887,12 @@ const FINPayroll = () => {
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       adjustmentDays: "",
       adjustmentRate: "",
       adjustmentTotal: "",
@@ -792,15 +950,20 @@ const FINPayroll = () => {
     setIsEditModalOpen(false);
     setSelectedPayroll(null);
     setPayrollsData({
+      fullName: "",
+      dateAttended: "",
       payrollPeriod: "",
       periodStart: "",
       periodEnd: "",
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       managementBonusTotal: "",
       thirteenthMonthTotal: "",
       regularOtHours: "",
@@ -853,9 +1016,12 @@ const FINPayroll = () => {
       basicPayDays: "",
       basicPayRate: "",
       basicPayTotal: "",
-      holidayDays: "",
-      holidayRate: "",
-      holidayTotal: "",
+      legalHolidayDays: "",
+      legalHolidayRate: "",
+      legalHolidayTotal: "",
+      specialHolidayDays: "",
+      specialHolidayRate: "",
+      specialHolidayTotal: "",
       managementBonusTotal: "",
       thirteenthMonthTotal: "",
       regularOtHours: "",
@@ -926,9 +1092,12 @@ const FINPayroll = () => {
           basic_pay_days: payrollsData.basicPayDays,
           basic_pay_rate: payrollsData.basicPayRate,
           basic_pay_total: payrollsData.basicPayTotal,
-          holiday_days: payrollsData.holidayDays,
-          holiday_rate: payrollsData.holidayRate,
-          holiday_total: payrollsData.holidayTotal,
+          legal_holiday_days: payrollsData.legalHolidayDays,
+          legal_holiday_rate: payrollsData.legalHolidayRate,
+          legal_holiday_total: payrollsData.legalHolidayTotal,
+          special_holiday_days: payrollsData.specialHolidayDays,
+          special_holiday_rate: payrollsData.specialHolidayRate,
+          special_holiday_total: payrollsData.specialHolidayTotal,
           management_bonus_total: payrollsData.managementBonusTotal,
           thirteenth_month_total: payrollsData.thirteenthMonthTotal,
           regular_ot_hours: payrollsData.regularOtHours,
@@ -984,9 +1153,12 @@ const FINPayroll = () => {
                   basic_pay_days: payrollsData.basicPayDays,
                   basic_pay_rate: payrollsData.basicPayRate,
                   basic_pay_total: payrollsData.basicPayTotal,
-                  holiday_days: payrollsData.holidayDays,
-                  holiday_rate: payrollsData.holidayRate,
-                  holiday_total: payrollsData.holidayTotal,
+                  legal_holiday_days: payrollsData.legalHolidayDays,
+                  legal_holiday_rate: payrollsData.legalHolidayRate,
+                  legal_holiday_total: payrollsData.legalHolidayTotal,
+                  special_holiday_days: payrollsData.specialHolidayDays,
+                  special_holiday_rate: payrollsData.specialHolidayRate,
+                  special_holiday_total: payrollsData.specialHolidayTotal,
                   management_bonus_total: payrollsData.managementBonusTotal,
                   thirteenth_month_total: payrollsData.thirteenthMonthTotal,
                   regular_ot_hours: payrollsData.regularOtHours,
@@ -1050,40 +1222,6 @@ const FINPayroll = () => {
       setErrors((prev) => ({
         ...prev,
         apiError: error.response?.data?.message || "Something went wrong.",
-      }));
-    }
-  };
-
-  const toggleConfirmModal = (payroll = null) => {
-    setSelectedPayroll(payroll);
-    setIsConfirmModalOpen(!isConfirmModalOpen);
-  };
-
-  const closeConfirmModal = () => {
-    setSelectedPayroll(null);
-    setIsConfirmModalOpen(false);
-  };
-
-  const handleConfirmPayroll = async () => {
-    if (!selectedPayroll) return;
-
-    try {
-      const response = await axios.put(
-        `${API_BASE_URL}/confirm-payroll/${selectedPayroll.id}`
-      );
-
-      if (response.data.success) {
-        setPayrolls((prevPayrolls) =>
-          prevPayrolls.filter((payroll) => payroll.id !== selectedPayroll.id)
-        );
-        fetchPayrolls();
-        closeConfirmModal();
-      }
-    } catch (error) {
-      setErrors((prev) => ({
-        ...prev,
-        apiError:
-          error.response?.data?.message || "An error occurred while deleting.",
       }));
     }
   };
@@ -1183,7 +1321,14 @@ const FINPayroll = () => {
         <h1 className={styles["page-title"]}>Payroll</h1>
       </div>
       <div className={styles["content-body-container"]}>
-        <div className={styles["add-payroll-button-container"]}></div>
+        <div className={styles["add-payroll-button-container"]}>
+          <button
+            className={styles["add-payroll-button"]}
+            onClick={toggleAddModal}
+          >
+            Run Payroll
+          </button>
+        </div>
         <div className={styles["filter-container"]} ref={filterRef}>
           <input
             className={styles.search}
@@ -1549,7 +1694,16 @@ const FINPayroll = () => {
               <tr className={styles.htr}>
                 <th className={styles.th}>Name</th>
                 <th className={styles.th}>Department</th>
+                <th className={styles.th}>Rate</th>
+                <th className={styles.th}>Hours</th>
                 <th className={styles.th}>Gross</th>
+                <th className={styles.th}>SSS Contribution</th>
+                <th className={styles.th}>SSS Loan</th>
+                <th className={styles.th}>PAGIBIG Contribution</th>
+                <th className={styles.th}>PAGIBIG Loan</th>
+                <th className={styles.th}>Philhealth Contribution</th>
+                <th className={styles.th}>Staffshop</th>
+                <th className={styles.th}>Cash Advance</th>
                 <th className={styles.th}>Total Deduction</th>
                 <th className={styles.th}>Net Pay</th>
                 <th className={styles.th}>Period</th>
@@ -1560,11 +1714,37 @@ const FINPayroll = () => {
               {paginatedPayrolls.map((payroll, index) => (
                 <React.Fragment key={index}>
                   <tr className={styles.btr}>
-                    <td className={styles.td}>{payroll.full_name}</td>
-                    <td className={styles.td}>
-                      {payroll.name} {payroll.role}
+                    <td className={`${styles.td} ${styles["full-name-td"]}`}>
+                      <span
+                        className={`${styles.status} ${
+                          payroll.status === "Pending"
+                            ? styles["status-pending"]
+                            : payroll.status === "Unpaid"
+                            ? styles["status-unpaid"]
+                            : payroll.status === "Paid"
+                            ? styles["status-paid"]
+                            : ""
+                        }`}
+                      ></span>
+                      {payroll.full_name}
                     </td>
+                    <td className={styles.td}>
+                      {payroll.department_name} {payroll.role}
+                    </td>
+                    <td className={styles.td}>₱{payroll.basic_pay_rate}</td>
+                    <td className={styles.td}>{payroll.basic_pay_days}</td>
                     <td className={styles.td}>₱{payroll.gross}</td>
+                    <td className={styles.td}>₱{payroll.sss_contribution}</td>
+                    <td className={styles.td}>₱{payroll.sss_loan}</td>
+                    <td className={styles.td}>
+                      ₱{payroll.pagibig_contribution}
+                    </td>
+                    <td className={styles.td}>₱{payroll.pagibig_loan}</td>
+                    <td className={styles.td}>
+                      ₱{payroll.philhealth_contribution}
+                    </td>
+                    <td className={styles.td}>₱{payroll.staff_shops}</td>
+                    <td className={styles.td}>₱{payroll.cash_advance}</td>
                     <td className={styles.td}>₱{payroll.total_deductions}</td>
                     <td className={styles.td}>₱{payroll.net_pay}</td>
                     <td className={styles.td}>
@@ -1588,22 +1768,6 @@ const FINPayroll = () => {
                     </td>
                     <td className={styles.td}>
                       <div className={styles["action-container"]}>
-                        <button
-                          className={styles["check-button"]}
-                          onMouseEnter={() => setIsCheckHovered(index)}
-                          onMouseLeave={() => setIsCheckHovered(null)}
-                          onClick={() => toggleConfirmModal(payroll)}
-                        >
-                          <img
-                            className={styles["check-icon"]}
-                            src={
-                              isCheckHovered === index
-                                ? checkHoverIcon
-                                : checkIcon
-                            }
-                            alt="Check"
-                          />
-                        </button>
                         <button
                           className={styles["edit-button"]}
                           onMouseEnter={() => setIsEditHovered(index)}
@@ -1738,6 +1902,260 @@ const FINPayroll = () => {
           </div>
         </div>
       </div>
+      {isAddModalOpen && (
+        <Modal isOpen={isAddModalOpen} onClose={toggleAddModal}>
+          <div className={styles["modal-container"]}>
+            <div className={styles["modal-header-container"]}>
+              <h3 className={styles["modal-title"]}>Add Payroll</h3>
+              <button
+                className={styles["close-modal-button"]}
+                onClick={closeAddModal}
+              >
+                <img
+                  className={styles["close-modal-icon"]}
+                  src={crossIcon}
+                  alt="Close"
+                />
+              </button>
+            </div>
+            <form
+              className={styles["modal-body-container"]}
+              onSubmit={handleAddPayroll}
+            >
+              <label className={styles.label} htmlFor="payroll_period">
+                Payroll Period
+                <Select
+                  className={`${styles.input} ${
+                    errors.payrollPeriod ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
+                    }),
+                  }}
+                  options={payrollPeriodOptions}
+                  placeholder="Select Payroll Period"
+                  name="payrollPeriod"
+                  id="payroll_period"
+                  value={payrollPeriodOptions.find(
+                    (option) => option.value === payrollsData.payrollPeriod
+                  )}
+                  onChange={(selectedOption) =>
+                    handleInputChange(
+                      null,
+                      "payrollPeriod",
+                      selectedOption.value
+                    )
+                  }
+                />
+                {errors.payrollPeriod && (
+                  <p className={styles["error-message"]}>
+                    {errors.payrollPeriod}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="role">
+                Role
+                <Select
+                  className={`${styles.input} ${
+                    errors.role ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
+                    }),
+                  }}
+                  options={roleOptions}
+                  placeholder="Select Role"
+                  name="role"
+                  id="role"
+                  value={roleOptions.find(
+                    (option) => option.value === payrollsData.role
+                  )}
+                  onChange={(selectedOption) =>
+                    handleInputChange(null, "role", selectedOption.value)
+                  }
+                />
+                {errors.role && (
+                  <p className={styles["error-message"]}>{errors.role}</p>
+                )}
+              </label>
+              <div className={styles["label-container"]}>
+                <label className={styles.label} htmlFor="period_start">
+                  Start Period
+                  <input
+                    className={`${styles.input} ${
+                      errors.periodStart ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="period_start"
+                    name="periodStart"
+                    value={payrollsData.periodStart}
+                    onChange={handleInputChange}
+                  />
+                  {errors.periodStart && (
+                    <p className={styles["error-message"]}>
+                      {errors.periodStart}
+                    </p>
+                  )}
+                </label>
+                <label className={styles.label} htmlFor="period_end">
+                  End Period
+                  <input
+                    className={`${styles.input} ${
+                      errors.periodEnd ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="period_end"
+                    name="periodEnd"
+                    value={payrollsData.periodEnd}
+                    onChange={handleInputChange}
+                  />
+                  {errors.periodEnd && (
+                    <p className={styles["error-message"]}>
+                      {errors.periodEnd}
+                    </p>
+                  )}
+                </label>
+              </div>
+              {errors.apiError && (
+                <p className={styles["error-message"]}>{errors.apiError}</p>
+              )}
+              <button className={styles["submit-button"]}>Submit</button>
+            </form>
+          </div>
+        </Modal>
+      )}
       {isEditModalOpen && selectedPayroll && (
         <Modal
           isOpen={isEditModalOpen}
@@ -1759,18 +2177,25 @@ const FINPayroll = () => {
                 />
               </button>
             </div>
+            <div className={styles["payroll-employee-name-container"]}>
+              <h1 className={styles["payroll-employee-name"]}>
+                {payrollsData.fullName}
+              </h1>
+            </div>
             <form
               className={styles["modal-body-container"]}
               onSubmit={handleEditPayroll}
             >
               <div className={styles["payroll-table-container"]}>
+                <Calendar dateAttended={payrollsData.dateAttended} />
+
                 <table className={styles.table}>
                   <thead className={styles.thead}>
                     <tr className={styles.htr}>
                       <th className={`${styles.pth} ${styles["pth-label"]}`}>
                         Additional
                       </th>
-                      <th className={styles.pth}>No. of Days</th>
+                      <th className={styles.pth}>No. of Hours</th>
                       <th className={styles.pth}>Rate</th>
                       <th className={styles.pth}>Total</th>
                     </tr>
@@ -1808,13 +2233,13 @@ const FINPayroll = () => {
                       </td>
                     </tr>
                     <tr className={styles.htr}>
-                      <th className={styles.pth}>Holiday</th>
+                      <th className={styles.pth}>Legal Holiday</th>
                       <td className={styles.ptd}>
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayDays"
-                          value={payrollsData.holidayDays || 0}
+                          name="legalHolidayDays"
+                          value={payrollsData.legalHolidayDays || 0}
                           onChange={handleInputChange}
                         />
                       </td>
@@ -1822,8 +2247,8 @@ const FINPayroll = () => {
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayRate"
-                          value={payrollsData.holidayRate || 0}
+                          name="legalHolidayRate"
+                          value={payrollsData.legalHolidayRate || 0}
                           onChange={handleInputChange}
                         />
                       </td>
@@ -1831,9 +2256,40 @@ const FINPayroll = () => {
                         <input
                           className={`${styles.input} ${styles["payroll-input"]}`}
                           type="number"
-                          name="holidayTotal"
+                          name="legalHolidayTotal"
                           onChange={handleInputChange}
-                          value={payrollsData.holidayTotal || 0}
+                          value={payrollsData.legalHolidayTotal || 0}
+                          readOnly
+                        />
+                      </td>
+                    </tr>
+                    <tr className={styles.htr}>
+                      <th className={styles.pth}>Special Holiday</th>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayDays"
+                          value={payrollsData.specialHolidayDays || 0}
+                          onChange={handleInputChange}
+                        />
+                      </td>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayRate"
+                          value={payrollsData.specialHolidayRate || 0}
+                          onChange={handleInputChange}
+                        />
+                      </td>
+                      <td className={styles.ptd}>
+                        <input
+                          className={`${styles.input} ${styles["payroll-input"]}`}
+                          type="number"
+                          name="specialHolidayTotal"
+                          onChange={handleInputChange}
+                          value={payrollsData.specialHolidayTotal || 0}
                           readOnly
                         />
                       </td>
@@ -2455,34 +2911,6 @@ const FINPayroll = () => {
           </div>
         </Modal>
       )}
-      {isConfirmModalOpen && selectedPayroll && (
-        <Modal
-          isOpen={isConfirmModalOpen}
-          onClose={() => setIsConfirmModalOpen(false)}
-        >
-          <div
-            className={`${styles["modal-container"]} ${styles["confirm-modal-container"]}`}
-          >
-            <h1 className={styles["confirm-modal-header"]}>
-              Confirm payment for {selectedPayroll.full_name}
-            </h1>
-            <div className={styles["confirm-modal-button-container"]}>
-              <button
-                className={styles["confirm-modal-button"]}
-                onClick={handleConfirmPayroll}
-              >
-                Confirm
-              </button>
-              <button
-                className={styles["cancel-confirm-modal-button"]}
-                onClick={closeConfirmModal}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {isDeleteModalOpen && selectedPayroll && (
         <Modal
           isOpen={isDeleteModalOpen}
@@ -2515,4 +2943,4 @@ const FINPayroll = () => {
   );
 };
 
-export default FINPayroll;
+export default HRCurrentPayroll;

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
+import Modal from "../../Modal";
 import styles from "../../../assets/styles/HRDashboard.module.css";
 import totalUserIcon from "../../../assets/images/total-user-icon.svg";
 import totalAdminIcon from "../../../assets/images/total-admin-icon.svg";
 import totalDriverIcon from "../../../assets/images/total-driver-icon.svg";
 import totalCrewIcon from "../../../assets/images/total-crew-icon.svg";
+import crossIcon from "../../../assets/images/cross-icon.svg";
 import Chart from "react-apexcharts";
 
 const API_BASE_URL =
@@ -12,12 +15,15 @@ const API_BASE_URL =
 
 const HRDashboard = () => {
   const [users, setUsers] = useState(0);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
   const [barChartData, setBarChartData] = useState({
     series: [],
     categories: [],
   });
   const [radialChartSeries, setRadialChartSeries] = useState([]);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [employees, setEmployees] = useState([]);
   const [chartKey, setChartKey] = useState(0);
   const [attendanceRate, setAttendanceRate] = useState(null);
   const [dailyAttendanceData, setDailyAttendanceData] = useState([]);
@@ -26,10 +32,11 @@ const HRDashboard = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/user-count`);
       if (response.data.success) {
-        const { totals, attendanceRateToday, dailyAttendance } =
+        const { totals, attendanceRateToday, dailyAttendance, employees } =
           response.data.data;
 
         setUsers(totals);
+        setEmployees(employees);
         setRadialChartSeries([
           totals.total_admins,
           totals.total_crews,
@@ -240,6 +247,14 @@ const HRDashboard = () => {
     },
   };
 
+  const toggleViewModal = () => {
+    setIsViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+  };
+
   return (
     <div className={styles["dashboards-content"]}>
       <div className={styles["content-header-container"]}>
@@ -253,24 +268,35 @@ const HRDashboard = () => {
                 label: "Total Users",
                 value: users.total_users,
                 image: totalUserIcon,
+                role: "All",
               },
               {
                 label: "Total Admins",
                 value: users.total_admins,
                 image: totalAdminIcon,
+                role: "Admin",
               },
               {
                 label: "Total Drivers",
                 value: users.total_drivers,
                 image: totalDriverIcon,
+                role: "Driver",
               },
               {
                 label: "Total Crews",
                 value: users.total_crews,
                 image: totalCrewIcon,
+                role: "Crew",
               },
             ].map((info, index) => (
-              <div className={styles["total-card"]} key={index}>
+              <div
+                className={styles["total-card"]}
+                key={index}
+                onClick={() => {
+                  setSelectedCard(info.role);
+                  toggleViewModal();
+                }}
+              >
                 <div className={styles["total-card-info-container"]}>
                   <p className={styles["total-card-label"]}>{info.label}</p>
                   <h1 className={styles["total-card-value"]}>{info.value}</h1>
@@ -362,6 +388,67 @@ const HRDashboard = () => {
           </div>
         </div>
       </div>
+      {isViewModalOpen && (
+        <Modal isOpen={isViewModalOpen} onClose={toggleViewModal}>
+          <div className={styles["modal-container"]}>
+            <div className={styles["modal-header-container"]}>
+              <h3 className={styles["modal-title"]}>
+                {selectedCard === "All" ? "All Employees" : `${selectedCard}s`}
+              </h3>
+              <button
+                className={styles["close-modal-button"]}
+                onClick={closeViewModal}
+              >
+                <img
+                  className={styles["close-modal-icon"]}
+                  src={crossIcon}
+                  alt="Close"
+                />
+              </button>
+            </div>
+            <div className={styles["modal-view-body-container"]}>
+              <div className={styles["table-container"]}>
+                <table className={styles.table}>
+                  <thead className={styles.thead}>
+                    <tr className={styles.htr}>
+                      <th className={styles.th}>Name</th>
+                      <th className={styles.th}>Department</th>
+                      <th className={styles.th}>Role</th>
+                      <th className={styles.th}>Company</th>
+                      <th className={styles.th}>Branch</th>
+                    </tr>
+                  </thead>
+                  <tbody className={styles.tbody}>
+                    {employees
+                      .filter((emp) => {
+                        if (selectedCard === "All") return true;
+                        if (selectedCard === "Admin")
+                          return emp.role !== "Crew" && emp.role !== "Driver";
+                        return emp.role === selectedCard;
+                      })
+                      .map((emp) => (
+                        <tr className={styles.btr} key={emp.id}>
+                          <td className={styles.td}>
+                            <Link
+                              className={styles["td-link"]}
+                              to={`/employee-profile/${emp.id}`}
+                            >
+                              {emp.first_name} {emp.last_name}
+                            </Link>
+                          </td>
+                          <td className={styles.td}>{emp.department_name}</td>
+                          <td className={styles.td}>{emp.role}</td>
+                          <td className={styles.td}>{emp.company}</td>
+                          <td className={styles.td}>{emp.branch}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

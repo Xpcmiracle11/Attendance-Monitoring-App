@@ -1,4 +1,7 @@
-.dispatch-content {
+.attendances-content {
+  width: 100%;
+}
+.attendances-content {
   width: 100%;
   height: 100vh;
   padding: 1rem;
@@ -20,28 +23,23 @@
   flex-direction: column;
   gap: 1rem;
 }
-.add-dispatch-button-container {
+.date-time-container {
   width: 100%;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  align-items: end;
+  gap: 0.5rem;
 }
-.add-dispatch-button {
-  width: 100%;
-  padding: 10px 14px;
+.day {
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  font-size: 18px;
+}
+.date-time {
+  font-family: var(--font-primary);
+  color: var(--text-primary);
   font-size: 16px;
-  border-radius: 6px;
-  background-color: var(--primary-blue);
-  border: 1px solid var(--primary-blue);
-  color: var(--background);
-  font-family: var(--font-secondary);
-  transition: 0.3s ease-in-out;
-  cursor: pointer;
-}
-.add-dispatch-button:hover,
-.add-dispatch-button:active {
-  box-shadow: 0 0 4px rgba(0, 123, 255, 0.8);
-  background-color: rgba(0, 123, 255, 0.8);
-  border: 1px solid rgba(0, 123, 255, 0.8);
+  font-weight: 600;
 }
 .filter-container {
   display: flex;
@@ -365,15 +363,19 @@
   width: 200px;
 }
 .th:nth-child(2),
-.th:nth-child(3),
+.th:nth-child(3) {
+  width: 350px;
+}
 .th:nth-child(4),
-.th:nth-child(5),
+.th:nth-child(5) {
+  width: 150px;
+}
 .th:nth-child(6),
 .th:nth-child(7) {
   width: 100px;
 }
 .th:nth-child(8) {
-  width: 100px;
+  width: 150px;
   text-align: center;
 }
 .th:nth-child(1) {
@@ -401,9 +403,6 @@
 .td:nth-child(1) {
   background-color: var(--background);
 }
-.td:nth-child(6) {
-  vertical-align: middle;
-}
 .action-container {
   display: flex;
   flex-direction: row;
@@ -411,8 +410,7 @@
   align-items: center;
   gap: 0.5rem;
 }
-.edit-button,
-.delete-button {
+.edit-button {
   width: 35px;
   height: 35px;
   padding: 4px;
@@ -422,27 +420,19 @@
   cursor: pointer;
   transition: 0.3s ease-in-out;
 }
-.edit-icon,
-.delete-icon {
+.edit-icon {
   width: 100%;
 }
-[data-theme="dark"] .edit-icon,
-[data-theme="dark"] .delete-icon {
+[data-theme="dark"] .edit-icon {
   filter: brightness(0) invert(1);
 }
-.edit-button p,
-.delete-button p {
+.edit-button p {
   display: none;
 }
 .edit-button:hover,
 .edit-button:active {
   background-color: var(--secondary-green);
   border: 1px solid var(--secondary-green);
-}
-.delete-button:hover,
-.delete-button:active {
-  background-color: var(--danger-red);
-  border: 1px solid var(--danger-red);
 }
 .search-response {
   text-align: start;
@@ -478,7 +468,7 @@
   display: none;
 }
 .pagination-page-button {
-  padding: 8px 12px;
+  padding: 8px;
   font-family: var(--font-secondary);
   background-color: var(--background);
   color: var(--text-primary);
@@ -507,10 +497,6 @@
   border-radius: 6px;
   font-size: 14px;
   width: 35px;
-}
-.add-modal-container {
-  max-height: 600px;
-  overflow-y: auto;
 }
 .modal-container {
   width: 90%;
@@ -573,7 +559,7 @@
   font-family: var(--font-primary);
   color: var(--text-primary);
 }
-.dispatch-name-error,
+.department-name-error,
 .description-error {
   border: 1px solid var(--danger-red);
 }
@@ -599,60 +585,6 @@
   box-shadow: 0 0 4px rgba(0, 123, 255, 0.8);
   background-color: rgba(0, 123, 255, 0.8);
   border: 1px solid rgba(0, 123, 255, 0.8);
-}
-.delete-modal-container {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  max-width: 400px;
-}
-.delete-modal-header {
-  text-align: center;
-  font-size: 20px;
-  font-family: var(--font-primary);
-  color: var(--text-primary);
-}
-.delete-modal-button-container {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.delete-modal-button {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 16px;
-  border-radius: 6px;
-  background-color: var(--danger-red);
-  border: 1px solid var(--danger-red);
-  color: var(--background);
-  font-family: var(--font-secondary);
-  transition: 0.3s ease-in-out;
-  cursor: pointer;
-}
-.delete-modal-button:hover,
-.delete-modal-button:active {
-  box-shadow: 0 0 4px rgba(220, 56, 72, 0.8);
-  background-color: rgba(220, 56, 72, 0.8);
-  border: 1px solid rgba(220, 56, 72, 0.8);
-}
-.cancel-delete-modal-button {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 16px;
-  border-radius: 6px;
-  background-color: var(--background);
-  border: 1px solid var(--borders);
-  color: var(--text-primary);
-  font-family: var(--font-secondary);
-  transition: 0.3s ease-in-out;
-  cursor: pointer;
-}
-.cancel-delete-modal-button:hover,
-.cancel-delete-modal-button:active {
-  box-shadow: 0 0 4px var(--borders);
-  background-color: var(--borders);
-  border: 1px solid var(--borders);
 }
 @media (min-width: 576px) and (max-width: 767px) {
   .modal-container {
@@ -693,17 +625,14 @@
   .search {
     width: 100%;
   }
+  .th:nth-child(1),
+  .td:nth-child(1) {
+    position: relative;
+  }
 }
 @media (min-width: 992px) and (max-width: 1199px) {
   .modal-container {
     width: 60%;
-  }
-  .add-dispatch-button-container {
-    justify-content: end;
-  }
-  .add-dispatch-button {
-    width: 25%;
-    max-width: 200px;
   }
   .filter-container {
     flex-direction: row;
@@ -722,6 +651,10 @@
   .search {
     width: 50%;
   }
+  .th:nth-child(1),
+  .td:nth-child(1) {
+    position: relative;
+  }
   .pagination-container {
     justify-content: end;
   }
@@ -729,13 +662,6 @@
 @media (min-width: 1200px) and (max-width: 1399px) {
   .modal-container {
     width: 50%;
-  }
-  .add-dispatch-button-container {
-    justify-content: end;
-  }
-  .add-dispatch-button {
-    width: 20%;
-    max-width: 200px;
   }
   .filter-container {
     flex-direction: row;
@@ -754,6 +680,10 @@
   .search {
     width: 45%;
   }
+  .th:nth-child(1),
+  .td:nth-child(1) {
+    position: relative;
+  }
   .pagination-container {
     justify-content: end;
   }
@@ -761,13 +691,6 @@
 @media (min-width: 1400px) {
   .modal-container {
     width: 40%;
-  }
-  .add-dispatch-button-container {
-    justify-content: end;
-  }
-  .add-dispatch-button {
-    width: 15%;
-    max-width: 200px;
   }
   .filter-container {
     flex-direction: row;
@@ -785,6 +708,10 @@
   }
   .search {
     width: 40%;
+  }
+  .th:nth-child(1),
+  .td:nth-child(1) {
+    position: relative;
   }
   .pagination-container {
     justify-content: end;

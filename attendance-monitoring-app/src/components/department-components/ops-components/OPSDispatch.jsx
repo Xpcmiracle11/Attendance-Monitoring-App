@@ -54,11 +54,13 @@ const OPSDispatch = () => {
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
   const [dispatchesData, setDispatchesData] = useState({
     userId: "",
+    crewId: "",
     truckId: "",
     loadedDate: "",
   });
   const [errors, setErrors] = useState({
     userId: "",
+    crewId: "",
     truckId: "",
     loadedDate: "",
     apiError: "",
@@ -148,7 +150,8 @@ const OPSDispatch = () => {
 
   const tableColumn = [
     "ID",
-    "Name",
+    "Driver Name",
+    "Crew Name",
     "Truck Plate",
     "Truck Type",
     "Loaded Date",
@@ -159,7 +162,8 @@ const OPSDispatch = () => {
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
-      Name: item.name,
+      "Driver Name": item.full_name,
+      "Crew Name": item.crew_name,
       "Truck Plate": item.plate_number,
       "Truck Type": item.truck_type,
       "Loaded Date": formatDate(item.loaded_date),
@@ -190,7 +194,8 @@ const OPSDispatch = () => {
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.name || "",
+      item.full_name || "",
+      item.crew_name || "",
       item.plate_number || "",
       item.truck_type || "",
       formatDate(item.loaded_date),
@@ -210,7 +215,8 @@ const OPSDispatch = () => {
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
-      Name: "name",
+      "Driver Name": "full_name",
+      "Crew Name": "crew_name",
       "Truck Plate": "plate_number",
       "Truck Type": "truck_type",
       "Loaded Date": "loaded_date",
@@ -354,6 +360,56 @@ const OPSDispatch = () => {
       });
   }, [dispatches, selectedDispatch]);
 
+  const [crewOptions, setCrewOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/users`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const users = response.data.data;
+
+          const filteredUsers = users.filter((user) => {
+            const isCrew =
+              user.department_name === "Operations" && user.role === "Crew";
+
+            const assignedCrewIds = dispatches.flatMap(
+              (dispatch) => dispatch.crew_id || []
+            );
+
+            const isAssigned = assignedCrewIds.includes(user.id);
+
+            const isCurrentCrew = selectedDispatch?.crew_id?.includes(user.id);
+
+            return isCrew && (!isAssigned || isCurrentCrew);
+          });
+
+          if (selectedDispatch?.crew_id) {
+            const currentCrew = users.filter((u) =>
+              selectedDispatch.crew_id.includes(u.id)
+            );
+            currentCrew.forEach((crewMember) => {
+              if (!filteredUsers.some((u) => u.id === crewMember.id)) {
+                filteredUsers.push(crewMember);
+              }
+            });
+          }
+
+          const options = filteredUsers.map((user) => ({
+            value: String(user.id),
+            label: user.full_name,
+          }));
+
+          setCrewOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching crew members:", error);
+      });
+  }, [dispatches, selectedDispatch]);
+
   const [plateNumberOptions, setPlateNumberOptions] = useState([]);
 
   useEffect(() => {
@@ -405,6 +461,7 @@ const OPSDispatch = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
       apiError: "",
@@ -415,11 +472,13 @@ const OPSDispatch = () => {
     setIsAddModalOpen(false);
     setDispatchesData({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
     });
     setErrors({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
       apiError: "",
@@ -449,24 +508,12 @@ const OPSDispatch = () => {
     }
   };
 
-  const formatIpInput = (value) => {
-    let cleaned = value.replace(/[^\d.]/g, "");
-
-    const parts = cleaned.split(".");
-    if (parts.length > 4) {
-      parts.splice(4);
-    }
-
-    const validParts = parts.map((part) => part.slice(0, 3));
-
-    return validParts.join(".");
-  };
-
   const handleAddDispatch = async (e) => {
     e.preventDefault();
 
     setErrors({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
       apiError: "",
@@ -478,6 +525,13 @@ const OPSDispatch = () => {
       setErrors((prev) => ({
         ...prev,
         userId: "Driver name is required.",
+      }));
+      hasError = true;
+    }
+    if (!dispatchesData.crewId || dispatchesData.crewId.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        crewId: "At least one crew member is required.",
       }));
       hasError = true;
     }
@@ -500,14 +554,17 @@ const OPSDispatch = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/insert-dispatch`, {
         user_id: dispatchesData.userId,
+        crew_id: dispatchesData.crewId,
         truck_id: dispatchesData.truckId,
         loaded_date: dispatchesData.loadedDate,
       });
+
       if (response.data.success) {
         setDispatches((prevDispatches) => [
           ...prevDispatches,
           {
             user_id: dispatchesData.userId,
+            crew_id: dispatchesData.crewId,
             truck_id: dispatchesData.truckId,
             loaded_date: dispatchesData.loadedDate,
           },
@@ -523,7 +580,7 @@ const OPSDispatch = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        apiError: error.response?.data?.message === "Failed to add attendance.",
+        apiError: error.response?.data?.message || "Failed to add dispatch.",
       }));
     }
   };
@@ -532,12 +589,14 @@ const OPSDispatch = () => {
     setSelectedDispatch(dispatch);
     setDispatchesData({
       userId: dispatch?.user_id || "",
+      crewId: dispatch?.crew_id || [],
       truckId: dispatch?.truck_id || "",
       loadedDate: dispatch?.loaded_date || "",
     });
     setIsEditModalOpen(true);
     setErrors({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
       apiError: "",
@@ -549,13 +608,15 @@ const OPSDispatch = () => {
     setSelectedDispatch(null);
     setDispatchesData({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
     });
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      userId: "",
+      crewId: "",
+      truckId: "",
+      loadedDate: "",
       apiError: "",
     });
   };
@@ -564,6 +625,7 @@ const OPSDispatch = () => {
     e.preventDefault();
     setErrors({
       userId: "",
+      crewId: "",
       truckId: "",
       loadedDate: "",
       apiError: "",
@@ -586,6 +648,13 @@ const OPSDispatch = () => {
       }));
       hasError = true;
     }
+    if (!dispatchesData.crewId || dispatchesData.crewId.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        crewId: "At least one crew member is required.",
+      }));
+      hasError = true;
+    }
     if (!dispatchesData.truckId) {
       setErrors((prev) => ({
         ...prev,
@@ -596,7 +665,7 @@ const OPSDispatch = () => {
     if (!dispatchesData.loadedDate) {
       setErrors((prev) => ({
         ...prev,
-        loadedDate: "Port is required.",
+        loadedDate: "Loaded date is required.",
       }));
       hasError = true;
     }
@@ -607,10 +676,12 @@ const OPSDispatch = () => {
         `${API_BASE_URL}/update-dispatch/${selectedDispatch.id}`,
         {
           user_id: dispatchesData.userId,
+          crew_id: dispatchesData.crewId,
           truck_id: dispatchesData.truckId,
           loaded_date: dispatchesData.loadedDate,
         }
       );
+
       if (response.data.success) {
         setDispatches((prevDispatches) =>
           prevDispatches.map((dispatch) =>
@@ -618,6 +689,7 @@ const OPSDispatch = () => {
               ? {
                   ...dispatch,
                   user_id: dispatchesData.userId,
+                  crew_id: dispatchesData.crewId,
                   truck_id: dispatchesData.truckId,
                   loaded_date: dispatchesData.loadedDate,
                 }
@@ -635,8 +707,7 @@ const OPSDispatch = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        apiError:
-          error.response?.data?.message === "Failed to update dispatch .",
+        apiError: error.response?.data?.message || "Failed to update dispatch.",
       }));
     }
   };
@@ -1085,6 +1156,7 @@ const OPSDispatch = () => {
             <thead className={styles.thead}>
               <tr className={styles.htr}>
                 <th className={styles.th}>Driver Name</th>
+                <th className={styles.th}>Crew</th>
                 <th className={styles.th}>Truck Plate</th>
                 <th className={styles.th}>Truck Type</th>
                 <th className={styles.th}>Loaded Date</th>
@@ -1099,6 +1171,7 @@ const OPSDispatch = () => {
                   <td className={styles.td}>
                     {index + 1}. {dispatch.full_name}
                   </td>
+                  <td className={styles.td}>{dispatch.crew_name}</td>
                   <td className={styles.td}>{dispatch.plate_number}</td>
                   <td className={styles.td}>{dispatch.truck_type}</td>
                   <td className={styles.td}>
@@ -1149,7 +1222,7 @@ const OPSDispatch = () => {
               {paginatedDispatches.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
                     No dispatches found.
@@ -1346,6 +1419,111 @@ const OPSDispatch = () => {
                   <p className={styles["error-message"]}>{errors.userId}</p>
                 )}
               </label>
+              <label className={styles.label} htmlFor="crew_id">
+                Crew
+                <Select
+                  isMulti
+                  className={`${styles.input} ${
+                    errors.crewId ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    multiValue: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode ? "#2a2a2a" : "#f1f1f1",
+                      borderRadius: "8px",
+                      padding: "2px 4px",
+                    }),
+                    multiValueLabel: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    multiValueRemove: (base) => ({
+                      ...base,
+                      cursor: "pointer",
+                      ":hover": {
+                        backgroundColor: "red",
+                        color: "white",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={crewOptions}
+                  placeholder="Select Crew"
+                  name="crewId"
+                  id="crew_id"
+                  value={crewOptions.filter((option) =>
+                    dispatchesData.crewId?.includes(option.value)
+                  )}
+                  onChange={(selectedOptions) =>
+                    handleInputChange(
+                      null,
+                      "crewId",
+                      selectedOptions
+                        ? selectedOptions.map((opt) => opt.value)
+                        : []
+                    )
+                  }
+                />
+                {errors.crewId && (
+                  <p className={styles["error-message"]}>{errors.crewId}</p>
+                )}
+              </label>
+
               <label className={styles.label} htmlFor="truck_id">
                 Truck
                 <Select
@@ -1552,6 +1730,91 @@ const OPSDispatch = () => {
                 />
                 {errors.userId && (
                   <p className={styles["error-message"]}>{errors.userId}</p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="crew_id">
+                Crew
+                <Select
+                  isMulti
+                  className={`${styles.input} ${
+                    errors.crewId ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: "var(--text-primary)",
+                      border: `1px solid var(--borders)`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "var(--text-primary)",
+                    }),
+                  }}
+                  options={crewOptions}
+                  placeholder="Select Crew"
+                  name="crewId"
+                  id="crew_id"
+                  value={crewOptions.filter((option) =>
+                    dispatchesData.crewId?.map(String).includes(option.value)
+                  )}
+                  onChange={(selectedOptions) =>
+                    setDispatchesData((prev) => ({
+                      ...prev,
+                      crewId: selectedOptions.map((option) =>
+                        String(option.value)
+                      ),
+                    }))
+                  }
+                />
+                {errors.crewId && (
+                  <p className={styles["error-message"]}>{errors.crewId}</p>
                 )}
               </label>
               <label className={styles.label} htmlFor="truck_id">
