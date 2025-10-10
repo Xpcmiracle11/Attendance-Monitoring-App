@@ -18,6 +18,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import Select from "react-select";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -50,12 +51,17 @@ const HRDriverAttendance = () => {
   const [attendanceData, setAttendanceData] = useState({
     clockIn: "",
     clockOut: "",
+    status: "",
   });
   const [errors, setErrors] = useState({
     clockIn: "",
     clockOut: "",
+    status: "",
     apiError: "",
   });
+
+  const isDarkMode =
+    document.documentElement.getAttribute("data-theme") === "dark";
 
   const fetchAttendances = async () => {
     try {
@@ -316,8 +322,15 @@ const HRDriverAttendance = () => {
     setExportFileType(type);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleInputChange = (e, nameOverride, valueOverride) => {
+    let name, value;
+
+    if (e && e.target) {
+      ({ name, value } = e.target);
+    } else {
+      name = nameOverride;
+      value = valueOverride;
+    }
     setAttendanceData((prevData) => ({
       ...prevData,
       [name]: value,
@@ -327,11 +340,34 @@ const HRDriverAttendance = () => {
       [name]: "",
     }));
   };
+  const statusOption = [
+    {
+      value: "Present",
+      label: "Present",
+    },
+    {
+      value: "Repair",
+      label: "Repair",
+    },
+    {
+      value: "Loading",
+      label: "Loading",
+    },
+    {
+      value: "Waiting",
+      label: "Waiting",
+    },
+    {
+      value: "Dispatch",
+      label: "Dispatch",
+    },
+  ];
   const toggleEditModal = (attendance = null) => {
     setSelectedAttendance(attendance);
     setAttendanceData({
       clockIn: attendance?.clock_in || "",
       clockOut: attendance?.clock_out || "",
+      status: attendance?.status || "",
     });
     setIsEditModalOpen(true);
     setErrors({
@@ -346,10 +382,12 @@ const HRDriverAttendance = () => {
     setAttendanceData({
       clockIn: "",
       clockOut: "",
+      status: "",
     });
     setErrors({
       clockIn: "",
       clockOut: "",
+      status: "",
       apiError: "",
     });
   };
@@ -359,6 +397,7 @@ const HRDriverAttendance = () => {
     setErrors({
       clockIn: "",
       clockOut: "",
+      status: "",
       apiError: "",
     });
 
@@ -377,6 +416,7 @@ const HRDriverAttendance = () => {
         {
           clock_in: attendanceData.clockIn,
           clock_out: attendanceData.clockOut,
+          status: attendanceData.status,
         }
       );
 
@@ -388,6 +428,7 @@ const HRDriverAttendance = () => {
                   ...attend,
                   clock_in: attendanceData.clockIn,
                   clock_out: attendanceData.clockOut,
+                  status: attendanceData.status,
                 }
               : attend
           )
@@ -867,9 +908,6 @@ const HRDriverAttendance = () => {
                 <th className={styles.th}>Name</th>
                 <th className={styles.th}>Clock In</th>
                 <th className={styles.th}>Clock Out</th>
-                <th className={styles.th}>Number of Hours</th>
-                <th className={styles.th}>Rate Per Hour</th>
-                <th className={styles.th}>Salary</th>
                 <th className={styles.th}>Status</th>
                 <th className={styles.th}>Action</th>
               </tr>
@@ -883,17 +921,6 @@ const HRDriverAttendance = () => {
                   <td className={styles.td}>{attendance.clock_in_formatted}</td>
                   <td className={styles.td}>
                     {attendance.clock_out_formatted}
-                  </td>
-                  <td className={styles.td}>
-                    {attendance.duration && !attendance.duration.startsWith("-")
-                      ? attendance.duration
-                      : "00:00"}
-                  </td>
-                  <td className={styles.td}>{attendance.rate}</td>
-                  <td className={styles.td}>
-                    {Number(attendance.salary) > 0
-                      ? attendance.salary
-                      : "00.00"}
                   </td>
                   <td className={styles.td}>{attendance.status}</td>
                   <td className={styles.td}>
@@ -1059,6 +1086,98 @@ const HRDriverAttendance = () => {
                   name="clockOut"
                   value={attendanceData.clockOut}
                   onChange={handleInputChange}
+                />
+              </label>
+              <label className={styles.label} htmlFor="status">
+                Status
+                <Select
+                  className={`${styles.input}`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                  }}
+                  options={statusOption}
+                  placeholder="Select Status"
+                  name="status"
+                  id="status"
+                  value={statusOption.find(
+                    (option) => option.value === attendanceData.status
+                  )}
+                  onChange={(selectedOption) =>
+                    handleInputChange(null, "status", selectedOption.value)
+                  }
                 />
               </label>
               {errors.apiError && (

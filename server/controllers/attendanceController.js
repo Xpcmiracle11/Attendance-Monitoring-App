@@ -23,9 +23,9 @@ const getAttendance = async (req, res) => {
     const sql = `
       SELECT 
       CONCAT_WS(' ', u.first_name, 
-        IFNULL(CONCAT(SUBSTRING(u.middle_name, 1, 1), '.'), ''), 
-        u.last_name
-      ) AS full_name,
+      IF(u.middle_name IS NOT NULL AND u.middle_name != '', CONCAT(SUBSTRING(u.middle_name, 1, 1), '.'), ''), 
+      u.last_name
+      ) AS full_name, 
       u.role,
       ad.id AS attendance_id,
       ad.user_id,
@@ -154,19 +154,15 @@ const getAttendance = async (req, res) => {
 
 const updateAttendance = async (req, res) => {
   const { id } = req.params;
-  const { clock_in, clock_out } = req.body;
-
-  if (!clock_in || !clock_out) {
-    return res.status(400).json({
-      success: false,
-      message: "Both clock in and clock out are required.",
-    });
-  }
+  let { clock_in, clock_out, status } = req.body;
 
   try {
+    clock_in = clock_in || null;
+    clock_out = clock_out || null;
+    status = status || "Present";
     const result = await runQuery(
-      `UPDATE attendance_details SET clock_in = ?, clock_out = ? WHERE id = ?`,
-      [clock_in, clock_out, id]
+      `UPDATE attendance_details SET clock_in = ?, clock_out = ?, status = ? WHERE id = ?`,
+      [clock_in, clock_out, status, id]
     );
 
     if (!result.affectedRows) {
@@ -298,7 +294,7 @@ const autoCloseMissingClockOuts = async () => {
 const startBiometricCronJob = () => {
   cron.schedule("*/10 * * * * *", syncAttendanceFromAllDevices);
   cron.schedule(
-    "5 0 * * *",
+    "0 18 * * *",
     async () => {
       writeLog("⏰ autoCloseMissingClockOuts started");
       try {

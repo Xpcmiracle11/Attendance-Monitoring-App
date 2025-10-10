@@ -63,7 +63,10 @@ const HRAdminAttendance = () => {
 
       if (response.data.success) {
         const adminAttendances = response.data.data.filter(
-          (user) => user.role === "Admin"
+          (user) =>
+            user.role === "Admin" ||
+            user.role === "Corporate" ||
+            user.role === "Manager"
         );
         setAttendances(adminAttendances);
       }

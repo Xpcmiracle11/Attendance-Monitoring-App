@@ -105,7 +105,6 @@ const HRUsers = () => {
     repeatPassword: "",
     imageFileName: "",
     apiError: "",
-    timeErrors: {},
   });
 
   const isDarkMode =
@@ -1093,7 +1092,6 @@ const HRUsers = () => {
     setIsViewModalOpen(false);
     setErrors({
       apiError: "",
-      timeErrors: {},
     });
   };
 
