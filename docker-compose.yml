@@ -29,24 +29,24 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  backend:
-    build: ./server
-    env_file:
-      - ./server/.env
-    ports:
-      - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
+  # backend:
+  #   build: ./server
+  #   env_file:
+  #     - ./server/.env
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: on-failure
 
-  frontend:
-    build: ./attendance-monitoring-app
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # frontend:
+  #   build: ./attendance-monitoring-app
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
