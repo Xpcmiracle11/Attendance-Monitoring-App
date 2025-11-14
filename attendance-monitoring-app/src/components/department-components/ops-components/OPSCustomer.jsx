@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/OPSDispatch.module.css";
+import styles from "../../../assets/styles/OPSCustomer.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
 import deleteIcon from "../../../assets/images/delete-icon.svg";
@@ -16,17 +16,17 @@ import excelIcon from "../../../assets/images/excel-icon.svg";
 import pdfActiveIcon from "../../../assets/images/pdf-active-icon.svg";
 import wordActiveIcon from "../../../assets/images/word-active-icon.svg";
 import excelActiveIcon from "../../../assets/images/excel-active-icon.svg";
+import Select from "react-select";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
-import Select from "react-select";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const OPSDispatch = () => {
-  const [dispatches, setDispatches] = useState([]);
+const OPSCustomer = () => {
+  const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,7 +40,7 @@ const OPSDispatch = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedDispatch, setSelectedDispatch] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState("");
@@ -52,48 +52,46 @@ const OPSDispatch = () => {
   const exportRef = useRef(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
-  const [dispatchesData, setDispatchesData] = useState({
-    userId: "",
-    crewId: "",
-    truckId: "",
-    loadedDate: "",
+  const [customersData, setCustomersData] = useState({
+    principal: "",
+    customerNumber: "",
+    customerName: "",
   });
   const [errors, setErrors] = useState({
-    userId: "",
-    crewId: "",
-    truckId: "",
-    loadedDate: "",
+    principal: "",
+    customerNumber: "",
+    customerName: "",
     apiError: "",
   });
 
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
-  const fetchDispatches = async () => {
+  const fetchCustomers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/dispatches`);
+      const response = await axios.get(`${API_BASE_URL}/customers`);
       if (response.data.success) {
-        setDispatches(response.data.data);
+        setCustomers(response.data.data);
       }
     } catch (error) {
-      console.error("Error fetching dispatch:", error);
+      console.error("Error fetching customer:", error);
     }
   };
   useEffect(() => {
-    fetchDispatches();
+    fetchCustomers();
   }, []);
 
-  const filteredDispatches = dispatches
-    .filter((dispatch) => {
-      const driverName = (dispatch.full_name || "").toLowerCase();
-      const matchesSearch = driverName.includes(search.toLowerCase());
+  const filteredCustomers = customers
+    .filter((customer) => {
+      const customerName = (customer.customer_name || "").toLowerCase();
+      const matchesSearch = customerName.includes(search.toLowerCase());
 
-      const dispatchDate = dispatch.created_at
-        ? new Date(dispatch.created_at.split("T")[0])
+      const customerDate = customer.created_at
+        ? new Date(customer.created_at.split("T")[0])
         : new Date();
       const iswithinDateRange =
-        (!appliedFromDate || dispatchDate >= new Date(appliedFromDate)) &&
-        (!appliedToDate || dispatchDate <= new Date(appliedToDate));
+        (!appliedFromDate || customerDate >= new Date(appliedFromDate)) &&
+        (!appliedToDate || customerDate <= new Date(appliedToDate));
 
       return matchesSearch && iswithinDateRange;
     })
@@ -102,15 +100,15 @@ const OPSDispatch = () => {
         return new Date(a.created_at) - new Date(b.created_at);
       if (sortOrder === "date-desc")
         return new Date(b.created_at) - new Date(a.created_at);
-      if (sortOrder === "full_name-asc")
-        return a.full_name.localeCompare(b.full_name);
-      if (sortOrder === "full_name-desc")
-        return b.full_name.localeCompare(a.full_name);
+      if (sortOrder === "customer_number-asc")
+        return a.customer_number.localeCompare(b.customer_number);
+      if (sortOrder === "customer_number-desc")
+        return b.customer_number.localeCompare(a.customer_number);
       return 0;
     });
 
-  const totalPages = Math.ceil(filteredDispatches.length / itemsPerPage);
-  const paginatedDispatches = filteredDispatches.slice(
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -150,30 +148,24 @@ const OPSDispatch = () => {
 
   const tableColumn = [
     "ID",
-    "Driver Name",
-    "Crew Name",
-    "Truck Plate",
-    "Truck Type",
-    "Loaded Date",
-    "Empty Date",
+    "Customer Number",
+    "Principal",
+    "Customer Name",
     "Created At",
   ];
 
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
-      "Driver Name": item.full_name,
-      "Crew Name": item.crew_name,
-      "Truck Plate": item.plate_number,
-      "Truck Type": item.truck_type,
-      "Loaded Date": formatDate(item.loaded_date),
-      "Empty Date": formatDate(item.empty_date),
+      "Customer Number": item.customer_number,
+      Principal: item.principal_code,
+      "Customer Name": item.customer_name,
       "Created At": formatDate(item.created_at),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dispatches");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -184,22 +176,19 @@ const OPSDispatch = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
     });
 
-    saveAs(blob, "dispatches.xlsx");
+    saveAs(blob, "customers.xlsx");
   };
 
   const exportToPDF = (data) => {
     const doc = new jsPDF();
 
-    doc.text("Dispatches Report", 14, 10);
+    doc.text("Customers Report", 14, 10);
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.full_name || "",
-      item.crew_name || "",
-      item.plate_number || "",
-      item.truck_type || "",
-      formatDate(item.loaded_date),
-      formatDate(item.empty_date),
+      item.customer_number || "",
+      item.principal_code || "",
+      item.customer_name || "",
       formatDate(item.created_at),
     ]);
 
@@ -209,18 +198,15 @@ const OPSDispatch = () => {
       startY: 20,
     });
 
-    doc.save("dispatches.pdf");
+    doc.save("customers.pdf");
   };
 
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
-      "Driver Name": "full_name",
-      "Crew Name": "crew_name",
-      "Truck Plate": "plate_number",
-      "Truck Type": "truck_type",
-      "Loaded Date": "loaded_date",
-      "Empty Date": "empty_date",
+      "Customer Number": "customer_number",
+      Principal: "principal_code",
+      "Customer Name": "customer_name",
       "Created At": "created_at",
     };
 
@@ -228,20 +214,14 @@ const OPSDispatch = () => {
       return new TableRow({
         children: tableColumn.map((column) => {
           const key = columnKeyMap[column];
-
-          let value = "";
-          if (column === "ID") {
-            value = (index + 1).toString();
-          } else if (
-            column === "Created At" ||
-            column === "Loaded Date" ||
-            column === "Empty Date"
-          ) {
-            value = item[key] ? formatDate(item[key]) : "";
-          } else {
-            value = item[key] ? item[key].toString() : "";
-          }
-
+          const value =
+            column === "ID"
+              ? (index + 1).toString()
+              : column === "Created At"
+              ? formatDate(item[key])
+              : item[key]
+              ? item[key].toString()
+              : "";
           return new TableCell({
             children: [new Paragraph(value)],
           });
@@ -262,7 +242,7 @@ const OPSDispatch = () => {
     });
 
     Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, "dispatches.docx");
+      saveAs(blob, "customers.docx");
     });
   };
 
@@ -272,13 +252,13 @@ const OPSDispatch = () => {
       return;
     }
 
-    const filteredData = dispatches.filter((dispatches) => {
-      const dispatchesDate = dispatches.created_at
-        ? new Date(dispatches.created_at.split("T")[0])
+    const filteredData = customers.filter((customer) => {
+      const customerDate = customer.created_at
+        ? new Date(customer.created_at.split("T")[0])
         : new Date();
       return (
-        (!exportFromDate || dispatchesDate >= new Date(exportFromDate)) &&
-        (!exportToDate || dispatchesDate <= new Date(exportToDate))
+        (!exportFromDate || customerDate >= new Date(exportFromDate)) &&
+        (!exportToDate || customerDate <= new Date(exportToDate))
       );
     });
 
@@ -311,265 +291,125 @@ const OPSDispatch = () => {
     setExportFileType(type);
   };
 
-  const [driverOptions, setDriverOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/users`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const users = response.data.data;
-
-          const filteredUsers = users.filter((user) => {
-            const isDriver =
-              user.department_name === "Operations" && user.role === "Driver";
-            const isAssigned = dispatches.some(
-              (dispatch) => dispatch.user_id === user.id
-            );
-            const isCurrentDriver =
-              selectedDispatch && selectedDispatch.user_id === user.id;
-
-            return isDriver && (!isAssigned || isCurrentDriver);
-          });
-
-          if (
-            selectedDispatch &&
-            selectedDispatch.user_id &&
-            !filteredUsers.some((u) => u.id === selectedDispatch.user_id)
-          ) {
-            const currentDriver = users.find(
-              (u) => u.id === selectedDispatch.user_id
-            );
-            if (currentDriver) {
-              filteredUsers.push(currentDriver);
-            }
-          }
-
-          const options = filteredUsers.map((user) => ({
-            value: String(user.id),
-            label: user.full_name,
-          }));
-
-          setDriverOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching drivers:", error);
-      });
-  }, [dispatches, selectedDispatch]);
-
-  const [crewOptions, setCrewOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/users`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const users = response.data.data;
-
-          const filteredUsers = users.filter((user) => {
-            const isCrew =
-              user.department_name === "Operations" && user.role === "Crew";
-
-            const assignedCrewIds = dispatches.flatMap(
-              (dispatch) => dispatch.crew_id || []
-            );
-
-            const isAssigned = assignedCrewIds.includes(user.id);
-
-            const isCurrentCrew = selectedDispatch?.crew_id?.includes(user.id);
-
-            return isCrew && (!isAssigned || isCurrentCrew);
-          });
-
-          if (selectedDispatch?.crew_id) {
-            const currentCrew = users.filter((u) =>
-              selectedDispatch.crew_id.includes(u.id)
-            );
-            currentCrew.forEach((crewMember) => {
-              if (!filteredUsers.some((u) => u.id === crewMember.id)) {
-                filteredUsers.push(crewMember);
-              }
-            });
-          }
-
-          const options = filteredUsers.map((user) => ({
-            value: String(user.id),
-            label: user.full_name,
-          }));
-
-          setCrewOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching crew members:", error);
-      });
-  }, [dispatches, selectedDispatch]);
-
-  const [plateNumberOptions, setPlateNumberOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/trucks`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const trucks = response.data.data;
-
-          const filteredTrucks = trucks.filter((truck) => {
-            const isAssigned = dispatches.some(
-              (dispatch) => dispatch.truck_id === truck.id
-            );
-            const isCurrentTruck =
-              selectedDispatch && selectedDispatch.truck_id === truck.id;
-
-            return !isAssigned || isCurrentTruck;
-          });
-
-          if (
-            selectedDispatch &&
-            selectedDispatch.truck_id &&
-            !filteredTrucks.some((t) => t.id === selectedDispatch.truck_id)
-          ) {
-            const currentTruck = trucks.find(
-              (t) => t.id === selectedDispatch.truck_id
-            );
-            if (currentTruck) {
-              filteredTrucks.push(currentTruck);
-            }
-          }
-
-          const options = filteredTrucks.map((truck) => ({
-            value: String(truck.id),
-            label: truck.plate_number,
-          }));
-
-          setPlateNumberOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching trucks:", error);
-      });
-  }, [dispatches, selectedDispatch]);
-
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
       apiError: "",
     });
   };
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setDispatchesData({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+    setCustomersData({
+      principal: "",
+      customerNumber: "",
+      customerName: "",
     });
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
       apiError: "",
     });
   };
 
-  const handleInputChange = (e, name, value) => {
-    if (e && e.target) {
-      const { name, value } = e.target;
-      setDispatchesData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-        [name]: "",
-      }));
+  const [principalOptions, setPrincipalOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/principals`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const options = response.data.data.map((principal) => ({
+            value: String(principal.id),
+            label: principal.principal_name,
+          }));
+          setPrincipalOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching departments:", error);
+      });
+  }, []);
+
+  const handleInputChange = (eventOrValue, nameArg, valueArg) => {
+    let fieldName, fieldValue;
+
+    if (eventOrValue && eventOrValue.target) {
+      fieldName = eventOrValue.target.name;
+      fieldValue = eventOrValue.target.value;
     } else {
-      setDispatchesData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-        [name]: "",
-      }));
+      fieldName = nameArg;
+      fieldValue = valueArg;
     }
+
+    setCustomersData((prevData) => ({
+      ...prevData,
+      [fieldName]: fieldValue,
+    }));
+
+    setErrors((prevErrors) => ({
+      ...prevErrors,
+      [fieldName]: "",
+    }));
   };
 
-  const handleAddDispatch = async (e) => {
+  const handleAddCustomer = async (e) => {
     e.preventDefault();
 
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
       apiError: "",
     });
 
     let hasError = false;
 
-    if (!dispatchesData.userId) {
+    if (!customersData.principal.trim()) {
       setErrors((prev) => ({
         ...prev,
-        userId: "Driver name is required.",
+        principal: "Principal is required.",
       }));
       hasError = true;
     }
-    if (!dispatchesData.crewId || dispatchesData.crewId.length === 0) {
+    if (!customersData.customerNumber.trim()) {
       setErrors((prev) => ({
         ...prev,
-        crewId: "At least one crew member is required.",
+        customerNumber: "Customer number is required.",
       }));
       hasError = true;
     }
-    if (!dispatchesData.truckId) {
+    if (!customersData.customerName.trim()) {
       setErrors((prev) => ({
         ...prev,
-        truckId: "Truck is required.",
-      }));
-      hasError = true;
-    }
-    if (!dispatchesData.loadedDate) {
-      setErrors((prev) => ({
-        ...prev,
-        loadedDate: "Loaded date is required.",
+        customerName: "Customer name is required.",
       }));
       hasError = true;
     }
     if (hasError) return;
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/insert-dispatch`, {
-        user_id: dispatchesData.userId,
-        crew_id: dispatchesData.crewId,
-        truck_id: dispatchesData.truckId,
-        loaded_date: dispatchesData.loadedDate,
+      const response = await axios.post(`${API_BASE_URL}/insert-customer`, {
+        principal: customersData.principal,
+        customer_number: customersData.customerNumber,
+        customer_name: customersData.customerName,
       });
-
       if (response.data.success) {
-        setDispatches((prevDispatches) => [
-          ...prevDispatches,
+        setCustomers((prevCustomers) => [
+          ...prevCustomers,
           {
-            user_id: dispatchesData.userId,
-            crew_id: dispatchesData.crewId,
-            truck_id: dispatchesData.truckId,
-            loaded_date: dispatchesData.loadedDate,
+            principal: customersData.principal,
+            customer_number: customersData.customerNumber,
+            customerName: customersData.customerName,
           },
         ]);
-        fetchDispatches();
+        fetchCustomers();
         closeAddModal();
       } else {
         setErrors((prev) => ({
@@ -580,92 +420,84 @@ const OPSDispatch = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        apiError: error.response?.data?.message || "Failed to add dispatch.",
+        apiError: error.response?.data?.message === "Failed to add attendance.",
       }));
     }
   };
 
-  const toggleEditModal = (dispatch = null) => {
-    setSelectedDispatch(dispatch);
-    setDispatchesData({
-      userId: dispatch?.user_id || "",
-      crewId: dispatch?.crew_id || [],
-      truckId: dispatch?.truck_id || "",
-      loadedDate: dispatch?.loaded_date || "",
+  const toggleEditModal = (customer = null) => {
+    console.log("Customer principal ID:", customer?.principal_id);
+    console.log("Principal options:", principalOptions);
+
+    setSelectedCustomer(customer);
+    setCustomersData({
+      principal: customer?.principal_id ? String(customer.principal_id) : "",
+      customerNumber: customer?.customer_number || "",
+      customerName: customer?.customer_name || "",
     });
     setIsEditModalOpen(true);
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
       apiError: "",
     });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
-    setSelectedDispatch(null);
-    setDispatchesData({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+    setSelectedCustomer(null);
+    setCustomersData({
+      principal: "",
+      customerNumber: "",
+      customerName: "",
     });
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
+      port: "",
       apiError: "",
     });
   };
 
-  const handleEditDispatch = async (e) => {
+  const handleEditCustomer = async (e) => {
     e.preventDefault();
     setErrors({
-      userId: "",
-      crewId: "",
-      truckId: "",
-      loadedDate: "",
+      principal: "",
+      customerNumber: "",
+      customerName: "",
       apiError: "",
     });
 
-    if (!selectedDispatch || !selectedDispatch.id) {
+    if (!selectedCustomer || !selectedCustomer.id) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid dispatch selected.",
+        apiError: "Invalid customer selected.",
       }));
       return;
     }
 
     let hasError = false;
 
-    if (!dispatchesData.userId) {
+    if (!customersData.principal.trim()) {
       setErrors((prev) => ({
         ...prev,
-        userId: "Driver name is required.",
+        principal: "Principal is required.",
       }));
       hasError = true;
     }
-    if (!dispatchesData.crewId || dispatchesData.crewId.length === 0) {
+    if (!customersData.customerNumber.trim()) {
       setErrors((prev) => ({
         ...prev,
-        crewId: "At least one crew member is required.",
+        customerNumber: "Customer number is required.",
       }));
       hasError = true;
     }
-    if (!dispatchesData.truckId) {
+    if (!customersData.customerName.trim()) {
       setErrors((prev) => ({
         ...prev,
-        truckId: "Truck is required.",
-      }));
-      hasError = true;
-    }
-    if (!dispatchesData.loadedDate) {
-      setErrors((prev) => ({
-        ...prev,
-        loadedDate: "Loaded date is required.",
+        customerName: "Customer name is required.",
       }));
       hasError = true;
     }
@@ -673,30 +505,27 @@ const OPSDispatch = () => {
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/update-dispatch/${selectedDispatch.id}`,
+        `${API_BASE_URL}/update-customer/${selectedCustomer.id}`,
         {
-          user_id: dispatchesData.userId,
-          crew_id: dispatchesData.crewId,
-          truck_id: dispatchesData.truckId,
-          loaded_date: dispatchesData.loadedDate,
+          principal: customersData.principal,
+          customer_number: customersData.customerNumber,
+          customer_name: customersData.customerName,
         }
       );
-
       if (response.data.success) {
-        setDispatches((prevDispatches) =>
-          prevDispatches.map((dispatch) =>
-            dispatch.id === selectedDispatch.id
+        setCustomers((prevCustomers) =>
+          prevCustomers.map((customer) =>
+            customer.id === selectedCustomer.id
               ? {
-                  ...dispatch,
-                  user_id: dispatchesData.userId,
-                  crew_id: dispatchesData.crewId,
-                  truck_id: dispatchesData.truckId,
-                  loaded_date: dispatchesData.loadedDate,
+                  ...customer,
+                  principal: customersData.principal,
+                  customer_number: customersData.customerNumber,
+                  customer_name: customersData.customerName,
                 }
-              : dispatch
+              : customer
           )
         );
-        fetchDispatches();
+        fetchCustomers();
         closeEditModal();
       } else {
         setErrors((prev) => ({
@@ -707,36 +536,37 @@ const OPSDispatch = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        apiError: error.response?.data?.message || "Failed to update dispatch.",
+        apiError:
+          error.response?.data?.message === "Failed to update customer .",
       }));
     }
   };
 
-  const toggleDeleteModal = (dispatch = null) => {
-    setSelectedDispatch(dispatch);
+  const toggleDeleteModal = (customer = null) => {
+    setSelectedCustomer(customer);
     setIsDeleteModalOpen(!isDeleteModalOpen);
   };
 
   const closeDeleteModal = () => {
-    setSelectedDispatch(null);
+    setSelectedCustomer(null);
     setIsDeleteModalOpen(false);
   };
 
-  const handleDeleteDispatch = async () => {
-    if (!selectedDispatch) return;
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer) return;
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/delete-dispatch/${selectedDispatch.id}`
+        `${API_BASE_URL}/delete-customer/${selectedCustomer.id}`
       );
 
       if (response.data.success) {
-        setDispatches((prevDispatches) =>
-          prevDispatches.filter(
-            (dispatch) => dispatch.id !== selectedDispatch.id
+        setCustomers((prevCustomers) =>
+          prevCustomers.filter(
+            (customer) => customer.id !== selectedCustomer.id
           )
         );
-        fetchDispatches();
+        fetchCustomers();
         toggleDeleteModal();
       }
     } catch (error) {
@@ -779,17 +609,17 @@ const OPSDispatch = () => {
   }, []);
 
   return (
-    <div className={styles["dispatch-content"]}>
+    <div className={styles["customer-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>Dispatch</h1>
+        <h1 className={styles["page-title"]}>Customers</h1>
       </div>
       <div className={styles["content-body-container"]}>
-        <div className={styles["add-dispatch-button-container"]}>
+        <div className={styles["add-customer-button-container"]}>
           <button
-            className={styles["add-dispatch-button"]}
+            className={styles["add-customer-button"]}
             onClick={toggleAddModal}
           >
-            Add Dispatch
+            Add Customer
           </button>
         </div>
         <div className={styles["filter-container"]} ref={filterRef}>
@@ -944,8 +774,10 @@ const OPSDispatch = () => {
                           id="a-z"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "ip_address-asc"}
-                          onChange={() => setTempSortOrder("ip_address-asc")}
+                          checked={tempSortOrder === "customer_number-asc"}
+                          onChange={() =>
+                            setTempSortOrder("customer_number-asc")
+                          }
                         />
                         A-Z
                       </label>
@@ -955,8 +787,10 @@ const OPSDispatch = () => {
                           id="z-a"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "ip_address-desc"}
-                          onChange={() => setTempSortOrder("ip_address-desc")}
+                          checked={tempSortOrder === "customer_number-desc"}
+                          onChange={() =>
+                            setTempSortOrder("customer_number-desc")
+                          }
                         />
                         Z-A
                       </label>
@@ -1155,39 +989,27 @@ const OPSDispatch = () => {
           <table className={styles.table}>
             <thead className={styles.thead}>
               <tr className={styles.htr}>
-                <th className={styles.th}>Driver Name</th>
-                <th className={styles.th}>Crew</th>
-                <th className={styles.th}>Truck Plate</th>
-                <th className={styles.th}>Truck Type</th>
-                <th className={styles.th}>Loaded Date</th>
-                <th className={styles.th}>Empty Date</th>
-                <th className={styles.th}>Status</th>
+                <th className={styles.th}>Customer Number</th>
+                <th className={styles.th}>Principal</th>
+                <th className={styles.th}>Customer Name</th>
                 <th className={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody className={styles.tbody}>
-              {paginatedDispatches.map((dispatch, index) => (
+              {paginatedCustomers.map((customer, index) => (
                 <tr className={styles.btr} key={index}>
                   <td className={styles.td}>
-                    {index + 1}. {dispatch.full_name}
+                    {index + 1}. {customer.customer_number}
                   </td>
-                  <td className={styles.td}>{dispatch.crew_name}</td>
-                  <td className={styles.td}>{dispatch.plate_number}</td>
-                  <td className={styles.td}>{dispatch.truck_type}</td>
-                  <td className={styles.td}>
-                    {formatDate(dispatch.loaded_date)}
-                  </td>
-                  <td className={styles.td}>
-                    {formatDate(dispatch.empty_date)}
-                  </td>
-                  <td className={styles.td}>{dispatch.status}</td>
+                  <td className={styles.td}>{customer.principal_code}</td>
+                  <td className={styles.td}>{customer.customer_name}</td>
                   <td className={styles.td}>
                     <div className={styles["action-container"]}>
                       <button
                         className={styles["edit-button"]}
                         onMouseEnter={() => setIsEditHovered(index)}
                         onMouseLeave={() => setIsEditHovered(null)}
-                        onClick={() => toggleEditModal(dispatch)}
+                        onClick={() => toggleEditModal(customer)}
                       >
                         <img
                           className={styles["edit-icon"]}
@@ -1202,7 +1024,7 @@ const OPSDispatch = () => {
                         className={styles["delete-button"]}
                         onMouseEnter={() => setIsDeleteHovered(index)}
                         onMouseLeave={() => setIsDeleteHovered(null)}
-                        onClick={() => toggleDeleteModal(dispatch)}
+                        onClick={() => toggleDeleteModal(customer)}
                       >
                         <img
                           className={styles["delete-icon"]}
@@ -1219,13 +1041,13 @@ const OPSDispatch = () => {
                   </td>
                 </tr>
               ))}
-              {paginatedDispatches.length === 0 && (
+              {paginatedCustomers.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="8"
+                    colSpan="4"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
-                    No dispatches found.
+                    No customers found.
                   </td>
                 </tr>
               )}
@@ -1324,7 +1146,7 @@ const OPSDispatch = () => {
             className={`${styles["modal-container"]} ${styles["add-modal-container"]}`}
           >
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Add Dispatch</h3>
+              <h3 className={styles["modal-title"]}>Add Customer</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeAddModal}
@@ -1338,13 +1160,13 @@ const OPSDispatch = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleAddDispatch}
+              onSubmit={handleAddCustomer}
             >
-              <label className={styles.label} htmlFor="user_id">
-                Driver
+              <label className={styles.label} htmlFor="principal">
+                Principal
                 <Select
                   className={`${styles.input} ${
-                    errors.userId ? styles["error-input"] : ""
+                    errors.principal ? styles["error-input"] : ""
                   }`}
                   styles={{
                     control: (base, state) => ({
@@ -1354,11 +1176,15 @@ const OPSDispatch = () => {
                         : "var(--borders)",
                       boxShadow: state.isFocused
                         ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
                         : "none",
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                       "&:hover": {
                         borderColor: "var(--text-secondary)",
                         boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
@@ -1371,8 +1197,12 @@ const OPSDispatch = () => {
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
                     }),
                     option: (base, state) => ({
                       ...base,
@@ -1385,7 +1215,11 @@ const OPSDispatch = () => {
                           ? "#2a2a2a"
                           : "#f8f9fa"
                         : base.backgroundColor,
-                      color: "var(--text-primary)",
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
                       cursor: "pointer",
                       "&:hover": {
                         backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
@@ -1393,230 +1227,72 @@ const OPSDispatch = () => {
                     }),
                     singleValue: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                     placeholder: (base) => ({
                       ...base,
-                      color: "var(--text-secondary)",
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
                     }),
                     input: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                   }}
-                  options={driverOptions}
-                  placeholder="Select Driver"
-                  name="userId"
-                  id="user_id"
-                  value={driverOptions.find(
-                    (option) => option.value === String(dispatchesData.userId)
+                  options={principalOptions}
+                  placeholder="Select Principal"
+                  name="principal"
+                  id="principal"
+                  value={principalOptions.find(
+                    (option) => option.value === customersData.principal
                   )}
                   onChange={(selectedOption) =>
-                    handleInputChange(null, "userId", selectedOption.value)
+                    handleInputChange(null, "principal", selectedOption.value)
                   }
                 />
-                {errors.userId && (
-                  <p className={styles["error-message"]}>{errors.userId}</p>
+                {errors.principal && (
+                  <p className={styles["error-message"]}>{errors.principal}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="crew_id">
-                Crew
-                <Select
-                  isMulti
-                  className={`${styles.input} ${
-                    errors.crewId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    multiValue: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode ? "#2a2a2a" : "#f1f1f1",
-                      borderRadius: "8px",
-                      padding: "2px 4px",
-                    }),
-                    multiValueLabel: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    multiValueRemove: (base) => ({
-                      ...base,
-                      cursor: "pointer",
-                      ":hover": {
-                        backgroundColor: "red",
-                        color: "white",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  options={crewOptions}
-                  placeholder="Select Crew"
-                  name="crewId"
-                  id="crew_id"
-                  value={crewOptions.filter((option) =>
-                    dispatchesData.crewId?.includes(option.value)
-                  )}
-                  onChange={(selectedOptions) =>
-                    handleInputChange(
-                      null,
-                      "crewId",
-                      selectedOptions
-                        ? selectedOptions.map((opt) => opt.value)
-                        : []
-                    )
-                  }
-                />
-                {errors.crewId && (
-                  <p className={styles["error-message"]}>{errors.crewId}</p>
-                )}
-              </label>
-
-              <label className={styles.label} htmlFor="truck_id">
-                Truck
-                <Select
-                  className={`${styles.input} ${
-                    errors.truckId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  options={plateNumberOptions}
-                  placeholder="Select Truck"
-                  name="truckId"
-                  id="truck_id"
-                  value={plateNumberOptions.find(
-                    (option) => option.value === String(dispatchesData.truckId)
-                  )}
-                  onChange={(selectedOption) =>
-                    handleInputChange(null, "truckId", selectedOption.value)
-                  }
-                />
-                {errors.truckId && (
-                  <p className={styles["error-message"]}>{errors.truckId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="loaded_date">
-                Loaded Date
+              <label className={styles.label} htmlFor="customer_number">
+                Customer Number
                 <input
                   className={`${styles.input} ${
-                    errors.loadedDate ? styles["error-input"] : ""
+                    errors.customerNumber ? styles["error-input"] : ""
                   }`}
-                  type="date"
-                  id="loaded_date"
-                  name="loadedDate"
-                  value={dispatchesData.loadedDate}
+                  type="text"
+                  id="customer_number"
+                  name="customerNumber"
+                  value={customersData.customerNumber}
                   onChange={handleInputChange}
                 />
-                {errors.loadedDate && (
-                  <p className={styles["error-message"]}>{errors.loadedDate}</p>
+                {errors.customerNumber && (
+                  <p className={styles["error-message"]}>
+                    {errors.customerNumber}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="customer_name">
+                Customer Name
+                <input
+                  className={`${styles.input} ${
+                    errors.customerName ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="customer_name"
+                  name="customerName"
+                  value={customersData.customerName}
+                  onChange={handleInputChange}
+                />
+                {errors.customerName && (
+                  <p className={styles["error-message"]}>
+                    {errors.customerName}
+                  </p>
                 )}
               </label>
               {errors.apiError && (
@@ -1627,14 +1303,14 @@ const OPSDispatch = () => {
           </div>
         </Modal>
       )}
-      {isEditModalOpen && selectedDispatch && (
+      {isEditModalOpen && selectedCustomer && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
         >
           <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit Dispatch</h3>
+              <h3 className={styles["modal-title"]}>Edit Customer</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeEditModal}
@@ -1648,13 +1324,13 @@ const OPSDispatch = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleEditDispatch}
+              onSubmit={handleEditCustomer}
             >
-              <label className={styles.label} htmlFor="user_id">
-                Driver
+              <label className={styles.label} htmlFor="principal">
+                Principal
                 <Select
                   className={`${styles.input} ${
-                    errors.userId ? styles["error-input"] : ""
+                    errors.principal ? styles["error-input"] : ""
                   }`}
                   styles={{
                     control: (base, state) => ({
@@ -1664,11 +1340,15 @@ const OPSDispatch = () => {
                         : "var(--borders)",
                       boxShadow: state.isFocused
                         ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
                         : "none",
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                       "&:hover": {
                         borderColor: "var(--text-secondary)",
                         boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
@@ -1681,8 +1361,12 @@ const OPSDispatch = () => {
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
                     }),
                     option: (base, state) => ({
                       ...base,
@@ -1695,7 +1379,11 @@ const OPSDispatch = () => {
                           ? "#2a2a2a"
                           : "#f8f9fa"
                         : base.backgroundColor,
-                      color: "var(--text-primary)",
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
                       cursor: "pointer",
                       "&:hover": {
                         backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
@@ -1703,216 +1391,72 @@ const OPSDispatch = () => {
                     }),
                     singleValue: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                     placeholder: (base) => ({
                       ...base,
-                      color: "var(--text-secondary)",
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
                     }),
                     input: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                   }}
-                  options={driverOptions}
-                  placeholder="Select Driver"
-                  name="userId"
-                  id="user_id"
-                  value={driverOptions.find(
-                    (option) => option.value === String(dispatchesData.userId)
+                  options={principalOptions}
+                  placeholder="Select Principal"
+                  name="principal"
+                  id="principal"
+                  value={principalOptions.find(
+                    (option) => option.value === customersData.principal
                   )}
                   onChange={(selectedOption) =>
-                    setDispatchesData((prev) => ({
-                      ...prev,
-                      userId: selectedOption.value,
-                    }))
+                    handleInputChange(null, "principal", selectedOption.value)
                   }
                 />
-                {errors.userId && (
-                  <p className={styles["error-message"]}>{errors.userId}</p>
+                {errors.principal && (
+                  <p className={styles["error-message"]}>{errors.principal}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="crew_id">
-                Crew
-                <Select
-                  isMulti
-                  className={`${styles.input} ${
-                    errors.crewId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  options={crewOptions}
-                  placeholder="Select Crew"
-                  name="crewId"
-                  id="crew_id"
-                  value={crewOptions.filter((option) =>
-                    dispatchesData.crewId?.map(String).includes(option.value)
-                  )}
-                  onChange={(selectedOptions) =>
-                    setDispatchesData((prev) => ({
-                      ...prev,
-                      crewId: selectedOptions.map((option) =>
-                        String(option.value)
-                      ),
-                    }))
-                  }
-                />
-                {errors.crewId && (
-                  <p className={styles["error-message"]}>{errors.crewId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="truck_id">
-                Truck
-                <Select
-                  className={`${styles.input} ${
-                    errors.truckId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  options={plateNumberOptions}
-                  placeholder="Select Truck"
-                  name="truckId"
-                  id="truck_id"
-                  value={plateNumberOptions.find(
-                    (option) => option.value === String(dispatchesData.truckId)
-                  )}
-                  onChange={(selectedOption) =>
-                    setDispatchesData((prev) => ({
-                      ...prev,
-                      truckId: selectedOption.value,
-                    }))
-                  }
-                />
-                {errors.truckId && (
-                  <p className={styles["error-message"]}>{errors.truckId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="loaded_date">
-                Loaded Date
+              <label className={styles.label} htmlFor="customer_number">
+                Customer Number
                 <input
                   className={`${styles.input} ${
-                    errors.loadedDate ? styles["error-input"] : ""
+                    errors.customerNumber ? styles["error-input"] : ""
                   }`}
-                  type="date"
-                  id="loaded_date"
-                  name="loadedDate"
-                  value={dispatchesData.loadedDate}
+                  type="text"
+                  id="customer_number"
+                  name="customerNumber"
+                  value={customersData.customerNumber}
                   onChange={handleInputChange}
                 />
-                {errors.loadedDate && (
-                  <p className={styles["error-message"]}>{errors.loadedDate}</p>
+                {errors.customerNumber && (
+                  <p className={styles["error-message"]}>
+                    {errors.customerNumber}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="customer_name">
+                Customer Name
+                <input
+                  className={`${styles.input} ${
+                    errors.customerName ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="customer_name"
+                  name="customerName"
+                  value={customersData.customerName}
+                  onChange={handleInputChange}
+                />
+                {errors.customerName && (
+                  <p className={styles["error-message"]}>
+                    {errors.customerName}
+                  </p>
                 )}
               </label>
               {errors.apiError && (
@@ -1923,7 +1467,7 @@ const OPSDispatch = () => {
           </div>
         </Modal>
       )}
-      {isDeleteModalOpen && selectedDispatch && (
+      {isDeleteModalOpen && selectedCustomer && (
         <Modal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
@@ -1932,12 +1476,12 @@ const OPSDispatch = () => {
             className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
           >
             <h1 className={styles["delete-modal-header"]}>
-              Are you sure to delete this dispatch?
+              Are you sure to delete this customer?
             </h1>
             <div className={styles["delete-modal-button-container"]}>
               <button
                 className={styles["delete-modal-button"]}
-                onClick={handleDeleteDispatch}
+                onClick={handleDeleteCustomer}
               >
                 Delete
               </button>
@@ -1955,4 +1499,4 @@ const OPSDispatch = () => {
   );
 };
 
-export default OPSDispatch;
+export default OPSCustomer;

@@ -21,8 +21,12 @@ const deviceRoutes = require("./routes/deviceRoutes");
 const payrollRoutes = require("./routes/payrollRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const chartRoutes = require("./routes/chartRoutes");
-const dispatchRoutes = require("./routes/dispatchRoutes");
+const dmrRoutes = require("./routes/dmrRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
+const siteRoutes = require("./routes/siteRoutes");
+const customerRoutes = require("./routes/customerRoutes");
+const matrixRoutes = require("./routes/matrixRoutes");
+const allowanceRoutes = require("./routes/allowanceRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -40,7 +44,7 @@ const getLocalIP = () => {
 const sanitizeName = (str) =>
   str.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 24);
 
-const allowedOrigins = ["http://localhost:3000", "http://172.16.1.24:3000"];
+const allowedOrigins = ["http://localhost:3000", "http://172.16.1.250:3000"];
 
 app.use(
   cors({
@@ -73,8 +77,12 @@ app.use("/api/", deviceRoutes);
 app.use("/api/", payrollRoutes);
 app.use("/api/", holidayRoutes);
 app.use("/api/", chartRoutes);
-app.use("/api/", dispatchRoutes);
+app.use("/api/", dmrRoutes);
+app.use("/api/", siteRoutes);
 app.use("/api/", employeeRoutes);
+app.use("/api/", customerRoutes);
+app.use("/api/", matrixRoutes);
+app.use("/api/", allowanceRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });

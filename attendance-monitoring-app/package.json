@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.8",
+    "@hello-pangea/dnd": "^18.0.1",
     "@react-google-maps/api": "^2.20.6",
     "apexcharts": "^4.7.0",
     "axios": "^1.8.3",
@@ -23,6 +24,7 @@
     "phil-reg-prov-mun-brgy": "^1.1.0",
     "react": "^18.3.1",
     "react-apexcharts": "^1.7.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-calendar": "^6.0.0",
     "react-dom": "^18.3.1",
     "react-input-mask": "^2.0.4",

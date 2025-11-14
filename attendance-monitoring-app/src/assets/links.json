@@ -70,16 +70,73 @@
     ]
   },
   {
-    "name": "Dispatch",
-    "path": "/dispatch",
-    "icon": "dispatch",
-    "active": "activeDispatch"
+    "name": "Matrix",
+    "path": "/matrix",
+    "icon": "matrix",
+    "active": "activeMatrix"
+  },
+  {
+    "name": "Site",
+    "path": "/site",
+    "icon": "site",
+    "active": "activeSite"
+  },
+  {
+    "name": "Principal",
+    "path": "/principal",
+    "icon": "principal",
+    "active": "activePrincipal"
+  },
+  {
+    "name": "Customer",
+    "path": "/customer",
+    "icon": "customer",
+    "active": "activeCustomer"
   },
   {
     "name": "DMR",
-    "path": "/dmr",
     "icon": "dmr",
-    "active": "activeDmr"
+    "active": "activeDmr",
+    "children": [
+      {
+        "name": "NPI",
+        "path": "/dmr/npi"
+      },
+      {
+        "name": "UL",
+        "path": "/dmr/ul"
+      },
+      {
+        "name": "PANA",
+        "path": "/dmr/pana"
+      },
+      {
+        "name": "TDI",
+        "path": "/dmr/tdi"
+      },
+      {
+        "name": "AP",
+        "path": "/dmr/ap"
+      }
+    ]
+  },
+  {
+    "name": "LMR",
+    "path": "/lmr",
+    "icon": "lmr",
+    "active": "activeLmr"
+  },
+  {
+    "name": "ETMR",
+    "path": "/etmr",
+    "icon": "etmr",
+    "active": "activeEtmr"
+  },
+  {
+    "name": "Allowance",
+    "path": "/allowance",
+    "icon": "allowance",
+    "active": "activeAllowance"
   },
   {
     "name": "Holiday",

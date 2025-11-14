@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/ITDevice.module.css";
+import styles from "../../../assets/styles/OPSSite.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
 import deleteIcon from "../../../assets/images/delete-icon.svg";
@@ -24,8 +24,8 @@ import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const ITDevice = () => {
-  const [devices, setDevices] = useState([]);
+const OPSSite = () => {
+  const [sites, setSites] = useState([]);
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,7 +39,7 @@ const ITDevice = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedSite, setSelectedSite] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState("");
@@ -51,45 +51,43 @@ const ITDevice = () => {
   const exportRef = useRef(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
   const [isDeleteHovered, setIsDeleteHovered] = useState(null);
-  const [devicesData, setDevicesData] = useState({
-    name: "",
-    ipAddress: "",
-    port: "",
+  const [sitesData, setSitesData] = useState({
+    siteName: "",
+    siteCode: "",
   });
   const [errors, setErrors] = useState({
-    name: "",
-    ipAddress: "",
-    apiError: "",
+    siteName: "",
+    siteCode: "",
   });
 
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
-  const fetchDevices = async () => {
+  const fetchSites = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/devices`);
+      const response = await axios.get(`${API_BASE_URL}/sites`);
       if (response.data.success) {
-        setDevices(response.data.data);
+        setSites(response.data.data);
       }
     } catch (error) {
-      console.error("Error fetching device:", error);
+      console.error("Error fetching site:", error);
     }
   };
   useEffect(() => {
-    fetchDevices();
+    fetchSites();
   }, []);
 
-  const filteredDevices = devices
-    .filter((device) => {
-      const deviceIP = (device.ip_address || "").toLowerCase();
-      const matchesSearch = deviceIP.includes(search.toLowerCase());
+  const filteredSites = sites
+    .filter((site) => {
+      const siteName = (site.site_name || "").toLowerCase();
+      const matchesSearch = siteName.includes(search.toLowerCase());
 
-      const deviceDate = device.created_at
-        ? new Date(device.created_at.split("T")[0])
+      const siteDate = site.created_at
+        ? new Date(site.created_at.split("T")[0])
         : new Date();
       const iswithinDateRange =
-        (!appliedFromDate || deviceDate >= new Date(appliedFromDate)) &&
-        (!appliedToDate || deviceDate <= new Date(appliedToDate));
+        (!appliedFromDate || siteDate >= new Date(appliedFromDate)) &&
+        (!appliedToDate || siteDate <= new Date(appliedToDate));
 
       return matchesSearch && iswithinDateRange;
     })
@@ -98,15 +96,15 @@ const ITDevice = () => {
         return new Date(a.created_at) - new Date(b.created_at);
       if (sortOrder === "date-desc")
         return new Date(b.created_at) - new Date(a.created_at);
-      if (sortOrder === "ip_address-asc")
-        return a.ip_address.localeCompare(b.ip_address);
-      if (sortOrder === "ip_address-desc")
-        return b.ip_address.localeCompare(a.ip_address);
+      if (sortOrder === "site_name-asc")
+        return a.site_name.localeCompare(b.site_name);
+      if (sortOrder === "site_name-desc")
+        return b.site_name.localeCompare(a.site_name);
       return 0;
     });
 
-  const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
-  const paginatedDevices = filteredDevices.slice(
+  const totalPages = Math.ceil(filteredSites.length / itemsPerPage);
+  const paginatedSites = filteredSites.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -144,20 +142,19 @@ const ITDevice = () => {
     return date.toLocaleDateString("en-US", options);
   };
 
-  const tableColumn = ["ID", "Name", "IP Address", "Port", "Created At"];
+  const tableColumn = ["ID", "Site Name", "Site Code", "Created At"];
 
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
-      Name: item.name,
-      "IP Address": item.ip_address,
-      Port: item.port,
+      "Site Name": item.site_name,
+      "Site Code": item.site_code,
       "Created At": formatDate(item.created_at),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Devices");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sites");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -168,19 +165,18 @@ const ITDevice = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
     });
 
-    saveAs(blob, "devices.xlsx");
+    saveAs(blob, "sites.xlsx");
   };
 
   const exportToPDF = (data) => {
     const doc = new jsPDF();
 
-    doc.text("Devices Report", 14, 10);
+    doc.text("Sites Report", 14, 10);
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.name || "",
-      item.ip_address || "",
-      item.port || "",
+      item.site_name || "",
+      item.site_code || "",
       formatDate(item.created_at),
     ]);
 
@@ -190,15 +186,14 @@ const ITDevice = () => {
       startY: 20,
     });
 
-    doc.save("devices.pdf");
+    doc.save("sites.pdf");
   };
 
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
-      Name: "name",
-      "IP Address": "ip_address",
-      Port: "port",
+      "Site Name": "site_name",
+      "Site Code": "site_code",
       "Created At": "created_at",
     };
 
@@ -234,7 +229,7 @@ const ITDevice = () => {
     });
 
     Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, "devices.docx");
+      saveAs(blob, "sites.docx");
     });
   };
 
@@ -244,13 +239,13 @@ const ITDevice = () => {
       return;
     }
 
-    const filteredData = devices.filter((devices) => {
-      const devicesDate = devices.created_at
-        ? new Date(devices.created_at.split("T")[0])
+    const filteredData = sites.filter((sites) => {
+      const sitesDate = sites.created_at
+        ? new Date(sites.created_at.split("T")[0])
         : new Date();
       return (
-        (!exportFromDate || devicesDate >= new Date(exportFromDate)) &&
-        (!exportToDate || devicesDate <= new Date(exportToDate))
+        (!exportFromDate || sitesDate >= new Date(exportFromDate)) &&
+        (!exportToDate || sitesDate <= new Date(exportToDate))
       );
     });
 
@@ -286,24 +281,21 @@ const ITDevice = () => {
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
   };
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setDevicesData({
-      name: "",
-      ipAddress: "",
-      port: "",
+    setSitesData({
+      siteName: "",
+      siteCode: "",
     });
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
   };
@@ -319,11 +311,7 @@ const ITDevice = () => {
       fieldValue = valueArg;
     }
 
-    if (fieldName === "ipAddress") {
-      fieldValue = formatIpInput(fieldValue);
-    }
-
-    setDevicesData((prevData) => ({
+    setSitesData((prevData) => ({
       ...prevData,
       [fieldName]: fieldValue,
     }));
@@ -334,70 +322,47 @@ const ITDevice = () => {
     }));
   };
 
-  const formatIpInput = (value) => {
-    let cleaned = value.replace(/[^\d.]/g, "");
-
-    const parts = cleaned.split(".");
-    if (parts.length > 4) {
-      parts.splice(4);
-    }
-
-    const validParts = parts.map((part) => part.slice(0, 3));
-
-    return validParts.join(".");
-  };
-
-  const handleAddDevice = async (e) => {
+  const handleAddSite = async (e) => {
     e.preventDefault();
 
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
 
     let hasError = false;
 
-    if (!devicesData.name.trim()) {
+    if (!sitesData.siteName.trim()) {
       setErrors((prev) => ({
         ...prev,
-        name: "Device name is required.",
+        siteName: "Site name is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.ipAddress.trim()) {
+    if (!sitesData.siteCode.trim()) {
       setErrors((prev) => ({
         ...prev,
-        ipAddress: "IP address is required.",
-      }));
-      hasError = true;
-    }
-    if (!devicesData.port.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        port: "Port is required.",
+        siteCode: "Site code is required.",
       }));
       hasError = true;
     }
     if (hasError) return;
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/insert-device`, {
-        name: devicesData.name,
-        ip_address: devicesData.ipAddress,
-        port: devicesData.port,
+      const response = await axios.post(`${API_BASE_URL}/insert-site`, {
+        site_name: sitesData.siteName,
+        site_code: sitesData.siteCode,
       });
       if (response.data.success) {
-        setDevices((prevDevices) => [
-          ...prevDevices,
+        setSites((prevSites) => [
+          ...prevSites,
           {
-            name: devicesData.name,
-            ip_address: devicesData.ipAddress,
-            port: devicesData.port,
+            site_name: sitesData.siteName,
+            site_code: sitesData.siteCode,
           },
         ]);
-        fetchDevices();
+        fetchSites();
         closeAddModal();
       } else {
         setErrors((prev) => ({
@@ -413,75 +378,63 @@ const ITDevice = () => {
     }
   };
 
-  const toggleEditModal = (device = null) => {
-    setSelectedDevice(device);
-    setDevicesData({
-      name: device?.name || "",
-      ipAddress: device?.ip_address || "",
-      port: device?.port || "",
+  const toggleEditModal = (site = null) => {
+    setSelectedSite(site);
+    setSitesData({
+      siteName: site?.site_name || "",
+      siteCode: site?.site_code || "",
     });
     setIsEditModalOpen(true);
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
-    setSelectedDevice(null);
-    setDevicesData({
-      name: "",
-      ipAddress: "",
-      port: "",
+    setSelectedSite(null);
+    setSitesData({
+      siteName: "",
+      siteCode: "",
     });
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
   };
 
-  const handleEditDevice = async (e) => {
+  const handleEditSite = async (e) => {
     e.preventDefault();
     setErrors({
-      name: "",
-      ipAddress: "",
-      port: "",
+      siteName: "",
+      siteCode: "",
       apiError: "",
     });
 
-    if (!selectedDevice || !selectedDevice.id) {
+    if (!selectedSite || !selectedSite.id) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid device selected.",
+        apiError: "Invalid site selected.",
       }));
       return;
     }
 
     let hasError = false;
 
-    if (!devicesData.name.trim()) {
+    if (!sitesData.siteName.trim()) {
       setErrors((prev) => ({
         ...prev,
-        name: "Device name is required.",
+        siteName: "Site name is required.",
       }));
       hasError = true;
     }
-    if (!devicesData.ipAddress.trim()) {
+    if (!sitesData.siteCode.trim()) {
       setErrors((prev) => ({
         ...prev,
-        ipAddress: "IP address is required.",
-      }));
-      hasError = true;
-    }
-    if (!devicesData.port) {
-      setErrors((prev) => ({
-        ...prev,
-        port: "Port is required.",
+        siteCode: "Site code is required.",
       }));
       hasError = true;
     }
@@ -489,27 +442,25 @@ const ITDevice = () => {
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/update-device/${selectedDevice.id}`,
+        `${API_BASE_URL}/update-site/${selectedSite.id}`,
         {
-          name: devicesData.name,
-          ip_address: devicesData.ipAddress,
-          port: devicesData.port,
+          site_name: sitesData.siteName,
+          site_code: sitesData.siteCode,
         }
       );
       if (response.data.success) {
-        setDevices((prevDevices) =>
-          prevDevices.map((device) =>
-            device.id === selectedDevice.id
+        setSites((prevSites) =>
+          prevSites.map((site) =>
+            site.id === selectedSite.id
               ? {
-                  ...device,
-                  name: devicesData.name,
-                  ip_address: devicesData.ipAddressd,
-                  port: devicesData.port,
+                  ...site,
+                  site_name: sitesData.siteName,
+                  site_code: sitesData.siteCode,
                 }
-              : device
+              : site
           )
         );
-        fetchDevices();
+        fetchSites();
         closeEditModal();
       } else {
         setErrors((prev) => ({
@@ -520,34 +471,34 @@ const ITDevice = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        apiError: error.response?.data?.message === "Failed to update device.",
+        apiError: error.response?.data?.message === "Failed to update site.",
       }));
     }
   };
 
-  const toggleDeleteModal = (device = null) => {
-    setSelectedDevice(device);
+  const toggleDeleteModal = (site = null) => {
+    setSelectedSite(site);
     setIsDeleteModalOpen(!isDeleteModalOpen);
   };
 
   const closeDeleteModal = () => {
-    setSelectedDevice(null);
+    setSelectedSite(null);
     setIsDeleteModalOpen(false);
   };
 
-  const handleDeleteDevice = async () => {
-    if (!selectedDevice) return;
+  const handleDeleteSite = async () => {
+    if (!selectedSite) return;
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/delete-device/${selectedDevice.id}`
+        `${API_BASE_URL}/delete-site/${selectedSite.id}`
       );
 
       if (response.data.success) {
-        setDevices((prevDevices) =>
-          prevDevices.filter((device) => device.id !== selectedDevice.id)
+        setSites((prevSites) =>
+          prevSites.filter((site) => site.id !== selectedSite.id)
         );
-        fetchDevices();
+        fetchSites();
         toggleDeleteModal();
       }
     } catch (error) {
@@ -590,17 +541,17 @@ const ITDevice = () => {
   }, []);
 
   return (
-    <div className={styles["device-content"]}>
+    <div className={styles["site-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>Device</h1>
+        <h1 className={styles["page-title"]}>Site</h1>
       </div>
       <div className={styles["content-body-container"]}>
-        <div className={styles["add-device-button-container"]}>
+        <div className={styles["add-site-button-container"]}>
           <button
-            className={styles["add-device-button"]}
+            className={styles["add-site-button"]}
             onClick={toggleAddModal}
           >
-            Add Device
+            Add Site
           </button>
         </div>
         <div className={styles["filter-container"]} ref={filterRef}>
@@ -755,8 +706,8 @@ const ITDevice = () => {
                           id="a-z"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "ip_address-asc"}
-                          onChange={() => setTempSortOrder("ip_address-asc")}
+                          checked={tempSortOrder === "site_name-asc"}
+                          onChange={() => setTempSortOrder("site_name-asc")}
                         />
                         A-Z
                       </label>
@@ -766,8 +717,8 @@ const ITDevice = () => {
                           id="z-a"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "ip_address-desc"}
-                          onChange={() => setTempSortOrder("ip_address-desc")}
+                          checked={tempSortOrder === "site_name-desc"}
+                          onChange={() => setTempSortOrder("site_name-desc")}
                         />
                         Z-A
                       </label>
@@ -966,27 +917,25 @@ const ITDevice = () => {
           <table className={styles.table}>
             <thead className={styles.thead}>
               <tr className={styles.htr}>
-                <th className={styles.th}>Device Name</th>
-                <th className={styles.th}>IP Address</th>
-                <th className={styles.th}>Port</th>
+                <th className={styles.th}>Site Name</th>
+                <th className={styles.th}>Site Code</th>
                 <th className={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody className={styles.tbody}>
-              {paginatedDevices.map((device, index) => (
+              {paginatedSites.map((site, index) => (
                 <tr className={styles.btr} key={index}>
                   <td className={styles.td}>
-                    {index + 1}. {device.name}
+                    {index + 1}. {site.site_name}
                   </td>
-                  <td className={styles.td}>{device.ip_address}</td>
-                  <td className={styles.td}>{device.port}</td>
+                  <td className={styles.td}>{site.site_code}</td>
                   <td className={styles.td}>
                     <div className={styles["action-container"]}>
                       <button
                         className={styles["edit-button"]}
                         onMouseEnter={() => setIsEditHovered(index)}
                         onMouseLeave={() => setIsEditHovered(null)}
-                        onClick={() => toggleEditModal(device)}
+                        onClick={() => toggleEditModal(site)}
                       >
                         <img
                           className={styles["edit-icon"]}
@@ -1001,7 +950,7 @@ const ITDevice = () => {
                         className={styles["delete-button"]}
                         onMouseEnter={() => setIsDeleteHovered(index)}
                         onMouseLeave={() => setIsDeleteHovered(null)}
-                        onClick={() => toggleDeleteModal(device)}
+                        onClick={() => toggleDeleteModal(site)}
                       >
                         <img
                           className={styles["delete-icon"]}
@@ -1018,13 +967,13 @@ const ITDevice = () => {
                   </td>
                 </tr>
               ))}
-              {paginatedDevices.length === 0 && (
+              {paginatedSites.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="4"
+                    colSpan="3"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
-                    No devices found.
+                    No sites found.
                   </td>
                 </tr>
               )}
@@ -1123,7 +1072,7 @@ const ITDevice = () => {
             className={`${styles["modal-container"]} ${styles["add-modal-container"]}`}
           >
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Add Device</h3>
+              <h3 className={styles["modal-title"]}>Add Site</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeAddModal}
@@ -1137,56 +1086,38 @@ const ITDevice = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleAddDevice}
+              onSubmit={handleAddSite}
             >
-              <label className={styles.label} htmlFor="name">
-                Device Name/Model
+              <label className={styles.label} htmlFor="site_name">
+                Site Name
                 <input
                   className={`${styles.input} ${
-                    errors.name ? styles["error-input"] : ""
+                    errors.siteName ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="name"
-                  name="name"
-                  value={devicesData.name}
+                  id="site_name"
+                  name="siteName"
+                  value={sitesData.siteName}
                   onChange={handleInputChange}
                 />
-                {errors.name && (
-                  <p className={styles["error-message"]}>{errors.name}</p>
+                {errors.siteName && (
+                  <p className={styles["error-message"]}>{errors.siteName}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="ip_address">
-                IP Address
+              <label className={styles.label} htmlFor="site_code">
+                Site Code
                 <input
                   className={`${styles.input} ${
-                    errors.ipAddress ? styles["error-input"] : ""
+                    errors.siteCode ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="ip_address"
-                  name="ipAddress"
-                  value={devicesData.ipAddress}
-                  onChange={handleInputChange}
-                  maxLength="15"
-                  size="15"
-                />
-                {errors.ipAddress && (
-                  <p className={styles["error-message"]}>{errors.ipAddress}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="port">
-                Port
-                <input
-                  className={`${styles.input} ${
-                    errors.port ? styles["error-input"] : ""
-                  }`}
-                  type="number"
-                  id="port"
-                  name="port"
-                  value={devicesData.port}
+                  id="site_code"
+                  name="siteCode"
+                  value={sitesData.siteCode}
                   onChange={handleInputChange}
                 />
-                {errors.port && (
-                  <p className={styles["error-message"]}>{errors.port}</p>
+                {errors.siteCode && (
+                  <p className={styles["error-message"]}>{errors.siteCode}</p>
                 )}
               </label>
               {errors.apiError && (
@@ -1197,14 +1128,14 @@ const ITDevice = () => {
           </div>
         </Modal>
       )}
-      {isEditModalOpen && selectedDevice && (
+      {isEditModalOpen && selectedSite && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
         >
           <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit Device</h3>
+              <h3 className={styles["modal-title"]}>Edit Site</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeEditModal}
@@ -1218,56 +1149,38 @@ const ITDevice = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleEditDevice}
+              onSubmit={handleEditSite}
             >
-              <label className={styles.label} htmlFor="name">
-                Device Name/Model
+              <label className={styles.label} htmlFor="site_name">
+                Site Name
                 <input
                   className={`${styles.input} ${
-                    errors.name ? styles["error-input"] : ""
+                    errors.siteName ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="name"
-                  name="name"
-                  value={devicesData.name}
+                  id="site_name"
+                  name="siteName"
+                  value={sitesData.siteName}
                   onChange={handleInputChange}
                 />
-                {errors.name && (
-                  <p className={styles["error-message"]}>{errors.name}</p>
+                {errors.siteName && (
+                  <p className={styles["error-message"]}>{errors.siteName}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="ip_address">
-                IP Address
+              <label className={styles.label} htmlFor="site_code">
+                Site Code
                 <input
                   className={`${styles.input} ${
-                    errors.ipAddress ? styles["error-input"] : ""
+                    errors.siteCode ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="ip_address"
-                  name="ipAddress"
-                  value={devicesData.ipAddress}
-                  onChange={handleInputChange}
-                  maxLength="15"
-                  size="15"
-                />
-                {errors.ipAddress && (
-                  <p className={styles["error-message"]}>{errors.ipAddress}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="port">
-                Port
-                <input
-                  className={`${styles.input} ${
-                    errors.port ? styles["error-input"] : ""
-                  }`}
-                  type="number"
-                  id="port"
-                  name="port"
-                  value={devicesData.port}
+                  id="site_code"
+                  name="siteCode"
+                  value={sitesData.siteCode}
                   onChange={handleInputChange}
                 />
-                {errors.port && (
-                  <p className={styles["error-message"]}>{errors.port}</p>
+                {errors.siteCode && (
+                  <p className={styles["error-message"]}>{errors.siteCode}</p>
                 )}
               </label>
               {errors.apiError && (
@@ -1278,7 +1191,7 @@ const ITDevice = () => {
           </div>
         </Modal>
       )}
-      {isDeleteModalOpen && selectedDevice && (
+      {isDeleteModalOpen && selectedSite && (
         <Modal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
@@ -1287,12 +1200,12 @@ const ITDevice = () => {
             className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
           >
             <h1 className={styles["delete-modal-header"]}>
-              Are you sure to delete this device?
+              Are you sure to delete this site?
             </h1>
             <div className={styles["delete-modal-button-container"]}>
               <button
                 className={styles["delete-modal-button"]}
-                onClick={handleDeleteDevice}
+                onClick={handleDeleteSite}
               >
                 Delete
               </button>
@@ -1310,4 +1223,4 @@ const ITDevice = () => {
   );
 };
 
-export default ITDevice;
+export default OPSSite;

@@ -20,11 +20,16 @@ import Device from "./pages/Device";
 import CurrentPayroll from "./pages/CurrentPayroll";
 import ArchivePayroll from "./pages/ArchivePayroll";
 import Profile from "./pages/Profile";
-import Dispatch from "./pages/Dispatch";
-import Dmr from "./pages/Dmr";
+import Site from "./pages/Site";
+import NPIDmr from "./pages/NPIDmr";
+import Lmr from "./pages/Lmr";
+import Etmr from "./pages/Etmr";
+import Allowance from "./pages/Allowance";
 import Holiday from "./pages/Holiday";
-import Loading from "./components/Loading";
+import Matrix from "./pages/Matrix";
 import EmployeeProfile from "./pages/EmployeeProfile";
+import Customer from "./pages/Customer";
+import Loading from "./components/Loading";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
@@ -236,38 +241,64 @@ function App() {
         />
 
         <Route
-          path="/profile"
-          element={
-            <PrivateRoute
-              allowedDepartments={[
-                "Finance",
-                "Human Resources",
-                "IT Department",
-                "Operations",
-                "Motorpool",
-              ]}
-            >
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/dispatch"
+          path="/customer"
           element={
             <PrivateRoute allowedDepartments={["Operations"]}>
-              <Dispatch />
+              <Customer />
             </PrivateRoute>
           }
         />
 
         <Route
-          path="/dmr"
+          path="/matrix"
           element={
-            <PrivateRoute
-              allowedDepartments={["Human Resources", "Finance", "Operations"]}
-            >
-              <Dmr />
+            <PrivateRoute allowedDepartments={["Finance"]}>
+              <Matrix />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/site"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <Site />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dmr/npi"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <NPIDmr />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/lmr"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <Lmr />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/etmr"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <Etmr />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/allowance"
+          element={
+            <PrivateRoute allowedDepartments={["Operations", "Finance"]}>
+              <Allowance />
             </PrivateRoute>
           }
         />
@@ -286,6 +317,23 @@ function App() {
           element={
             <PrivateRoute allowedDepartments={["Human Resources"]}>
               <EmployeeProfile />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute
+              allowedDepartments={[
+                "Finance",
+                "Human Resources",
+                "IT Department",
+                "Operations",
+                "Motorpool",
+              ]}
+            >
+              <Profile />
             </PrivateRoute>
           }
         />

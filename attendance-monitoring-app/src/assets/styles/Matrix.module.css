@@ -1,0 +1,10 @@
+.matrix {
+  width: 100%;
+}
+.matrix-container {
+  width: 100%;
+  display: flex;
+}
+.sidebar-container {
+  width: fit-content;
+}

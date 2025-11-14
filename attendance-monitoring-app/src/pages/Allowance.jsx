@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import styles from "../assets/styles/Dmr.module.css";
-import HRDmr from "../components/department-components/hr-components/HRDmr.jsx";
-import OPSDmr from "../components/department-components/ops-components/OPSDmr";
-import FINDmr from "../components/department-components/fin-components/FINDmr";
+import OPSAllowance from "../components/department-components/ops-components/OPSAllowance";
+import FINAllowance from "../components/department-components/fin-components/FINAllowance";
+import styles from "../assets/styles/Allowance.module.css";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const Dmr = () => {
+
+const Allowance = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userDepartment, setUserDepartment] = useState(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
   };
-
   const sidebarRef = useRef(null);
   const toggleButtonRef = useRef(null);
 
@@ -39,7 +38,6 @@ const Dmr = () => {
     };
     fetchUser();
   }, []);
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -60,25 +58,23 @@ const Dmr = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className={styles.dmr}>
+    <div className={styles.allowance}>
       <Topbar
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         toggleButtonRef={toggleButtonRef}
       />
-      <div className={styles["dmr-container"]}>
+      <div className={styles["allowance-container"]}>
         <div className={styles["sidebar-container"]} ref={sidebarRef}>
           <Sidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={toggleSidebar}
           />
         </div>
-        {userDepartment === "Human Resources" ? (
-          <HRDmr />
-        ) : userDepartment === "Operations" ? (
-          <OPSDmr />
+        {userDepartment === "Operations" ? (
+          <OPSAllowance />
         ) : userDepartment === "Finance" ? (
-          <FINDmr />
+          <FINAllowance />
         ) : (
           ""
         )}
@@ -87,4 +83,4 @@ const Dmr = () => {
   );
 };
 
-export default Dmr;
+export default Allowance;

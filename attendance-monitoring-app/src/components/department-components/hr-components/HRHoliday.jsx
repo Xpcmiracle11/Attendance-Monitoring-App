@@ -293,57 +293,6 @@ const HRHoliday = () => {
     setExportFileType(type);
   };
 
-  const [driverOptions, setDriverOptions] = useState([]);
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/users`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const filteredUsers = response.data.data.filter(
-            (user) =>
-              user.department_name === "Operations" &&
-              user.role === "Driver" &&
-              !holidays.some((holiday) => holiday.driver_id === user.id)
-          );
-          const options = filteredUsers.map((user) => ({
-            value: String(user.id),
-            label: user.full_name,
-          }));
-          setDriverOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching drivers:", error);
-      });
-  }, [holidays]);
-
-  const [plateNumberOptions, setPlateNumberOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/trucks`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const filteredTrucks = response.data.data.filter(
-            (truck) =>
-              !holidays.some((holiday) => holiday.plate_number_id === truck.id)
-          );
-          const options = filteredTrucks.map((truck) => ({
-            value: String(truck.id),
-            label: truck.plate_number,
-          }));
-          setPlateNumberOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching trucks:", error);
-      });
-  }, [holidays]);
-
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
     setErrors({

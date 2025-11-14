@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import Topbar from "../components/Topbar";
 import Sidebar from "../components/Sidebar";
-import OPSDispatch from "../components/department-components/ops-components/OPSDispatch";
-import styles from "../assets/styles/Dispatch.module.css";
+import OPSNPIDmr from "../components/department-components/ops-components/DMR/OPSNPIDmr";
+import styles from "../assets/styles/NPIDmr.module.css";
 
-const Dispatch = () => {
+const NPIDmr = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => !prev);
-  };
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
   const sidebarRef = useRef(null);
   const toggleButtonRef = useRef(null);
 
@@ -32,23 +32,23 @@ const Dispatch = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className={styles.dispatch}>
+    <div className={styles.dmr}>
       <Topbar
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         toggleButtonRef={toggleButtonRef}
       />
-      <div className={styles["dispatch-container"]}>
+      <div className={styles["dmr-container"]}>
         <div className={styles["sidebar-container"]} ref={sidebarRef}>
           <Sidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={toggleSidebar}
           />
         </div>
-        <OPSDispatch />
+        <OPSNPIDmr />
       </div>
     </div>
   );
 };
 
-export default Dispatch;
+export default NPIDmr;

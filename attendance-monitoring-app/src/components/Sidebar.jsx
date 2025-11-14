@@ -18,12 +18,22 @@ import deviceIcon from "../assets/images/device-icon.svg";
 import deviceActiveIcon from "../assets/images/device-active-icon.svg";
 import payrollIcon from "../assets/images/payroll-icon.svg";
 import payrollActiveIcon from "../assets/images/payroll-active-icon.svg";
-import dispatchIcon from "../assets/images/dispatch-icon.svg";
-import dispatchActiveIcon from "../assets/images/dispatch-active-icon.svg";
+import siteIcon from "../assets/images/site-icon.svg";
+import siteActiveIcon from "../assets/images/site-active-icon.svg";
+import customerIcon from "../assets/images/customer-icon.svg";
+import customerActiveIcon from "../assets/images/customer-active-icon.svg";
 import dmrIcon from "../assets/images/dmr-icon.svg";
 import dmrActiveIcon from "../assets/images/dmr-active-icon.svg";
+import lmrIcon from "../assets/images/lmr-icon.svg";
+import lmrActiveIcon from "../assets/images/lmr-active-icon.svg";
+import etmrIcon from "../assets/images/etmr-icon.svg";
+import etmrActiveIcon from "../assets/images/etmr-active-icon.svg";
+import allowanceIcon from "../assets/images/allowance-icon.svg";
+import allowanceActiveIcon from "../assets/images/allowance-active-icon.svg";
 import holidayIcon from "../assets/images/holiday-icon.svg";
 import holidayActiveIcon from "../assets/images/holiday-active-icon.svg";
+import matrixIcon from "../assets/images/matrix-icon.svg";
+import matrixActiveIcon from "../assets/images/matrix-active-icon.svg";
 import sunIcon from "../assets/images/sun-icon.svg";
 import moonIcon from "../assets/images/moon-icon.svg";
 import links from "../assets/links.json";
@@ -39,9 +49,14 @@ const icons = {
   attendance: attendanceIcon,
   device: deviceIcon,
   payroll: payrollIcon,
-  dispatch: dispatchIcon,
+  site: siteIcon,
+  customer: customerIcon,
   dmr: dmrIcon,
+  lmr: lmrIcon,
+  etmr: etmrIcon,
+  allowance: allowanceIcon,
   holiday: holidayIcon,
+  matrix: matrixIcon,
 };
 
 const activeIcons = {
@@ -53,9 +68,14 @@ const activeIcons = {
   attendance: attendanceActiveIcon,
   device: deviceActiveIcon,
   payroll: payrollActiveIcon,
-  dispatch: dispatchActiveIcon,
+  site: siteActiveIcon,
+  customer: customerActiveIcon,
   dmr: dmrActiveIcon,
+  lmr: lmrActiveIcon,
+  etmr: etmrActiveIcon,
+  allowance: allowanceActiveIcon,
   holiday: holidayActiveIcon,
+  matrix: matrixActiveIcon,
 };
 
 const Sidebar = ({ isSidebarOpen }) => {
@@ -63,6 +83,7 @@ const Sidebar = ({ isSidebarOpen }) => {
   const [isChecked, setIsChecked] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [user, setUser] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -94,12 +115,21 @@ const Sidebar = ({ isSidebarOpen }) => {
         "monitoring",
         "attendance",
         "payroll",
-        "dmr",
         "holiday",
       ],
-      Operations: ["dashboard", "trucks", "dispatch", "dmr"],
+      Operations: [
+        "dashboard",
+        "trucks",
+        "site",
+        "dispatch",
+        "dmr",
+        "lmr",
+        "etmr",
+        "allowance",
+        "customer",
+      ],
       "IT Department": ["dashboard", "departments", "device", "users"],
-      Finance: ["dashboard", "payroll", "dmr"],
+      Finance: ["dashboard", "payroll", "allowance", "matrix"],
     };
 
     const defaultLinks = ["dashboard"];
@@ -132,8 +162,6 @@ const Sidebar = ({ isSidebarOpen }) => {
       setIsChecked(false);
     }
   }, []);
-
-  const [openMenu, setOpenMenu] = useState(null);
 
   const toggleMenu = (menuName) => {
     setOpenMenu((prev) => (prev === menuName ? null : menuName));
@@ -273,9 +301,70 @@ const Sidebar = ({ isSidebarOpen }) => {
                   );
                 }
               }
+              if (link.name === "DMR" && link.children?.length > 0) {
+                const isMenuOpen = openMenu === "DMR" || isChildActive;
+
+                return (
+                  <li
+                    key={index}
+                    className={`${styles["navigation-option-dropdown"]} ${
+                      isChildActive ? styles.active : ""
+                    }`}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <div
+                      className={`${styles["navigation-link"]} ${
+                        isChildActive ? styles.active : ""
+                      }`}
+                      onClick={() => toggleMenu("DMR")}
+                    >
+                      <img
+                        className={`${styles["navigation-icon"]} ${iconClass}`}
+                        src={iconSrc}
+                        alt={link.name}
+                      />
+                      {link.name}
+                      <span
+                        className={`${styles.arrow} ${
+                          isMenuOpen
+                            ? styles["open-menu"]
+                            : styles["closed-menu"]
+                        }`}
+                      >
+                        &gt;
+                      </span>
+                    </div>
+                    {isMenuOpen && (
+                      <ul className={styles["submenu"]}>
+                        {link.children.map((child, childIndex) => {
+                          const isChildItemActive =
+                            location.pathname === child.path;
+                          return (
+                            <li
+                              key={childIndex}
+                              className={`${styles["submenu-item"]} ${
+                                isChildItemActive ? styles.active : ""
+                              }`}
+                            >
+                              <Link
+                                to={child.path}
+                                className={`${
+                                  styles["navigation-link-dropdown"]
+                                } ${isChildItemActive ? styles.active : ""}`}
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
               if (link.name === "Attendance" && link.children?.length > 0) {
                 const isMenuOpen = openMenu === "Attendance" || isChildActive;
-
                 return (
                   <li
                     key={index}

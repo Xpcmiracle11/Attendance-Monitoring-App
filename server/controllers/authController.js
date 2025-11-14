@@ -33,24 +33,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const attendanceQuery = `
-      SELECT id FROM attendance_details 
-      WHERE user_id = ? 
-      AND DATE(clock_in) = CURDATE()
-      AND clock_in IS NOT NULL
-      AND clock_out IS NULL
-      LIMIT 1
-    `;
-    const [attendance] = await db.query(attendanceQuery, [user.id]);
-
-    if (attendance.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Login not allowed. Either no clock-in or already clocked out today.",
-      });
-    }
-
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,

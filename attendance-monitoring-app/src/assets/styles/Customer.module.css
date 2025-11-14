@@ -1,0 +1,10 @@
+.customer {
+  width: 100%;
+}
+.customer-container {
+  width: 100%;
+  display: flex;
+}
+.sidebar-container {
+  width: fit-content;
+}
