@@ -346,6 +346,30 @@
 .thead {
   background-color: var(--borders);
 }
+.status-pin-pending {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: orange;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.status-pin-approved {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: green;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.status-pin-declined {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: red;
+  border-radius: 50%;
+  margin-right: 5px;
+}
 .htr,
 .btr {
   width: 100%;
@@ -389,7 +413,9 @@
 .th:nth-child(20),
 .th:nth-child(21),
 .th:nth-child(22),
-.th:nth-child(23) {
+.th:nth-child(23),
+.th:nth-child(24),
+.th:nth-child(25) {
   width: 150px;
 }
 .th:nth-child(6) {
@@ -600,18 +626,33 @@
   flex-direction: column;
   gap: 1rem;
 }
+.dmr-body-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 .invoice-customer-container {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-.customer-invoice-row {
+.customer-block {
   width: 100%;
   padding: 1rem;
   border: 1px solid var(--borders);
   border-radius: 6px;
   display: flex;
   flex-direction: row;
+  gap: 1rem;
+}
+.invoice-block {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--borders);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 .customer-invoice-input-container {
@@ -802,6 +843,19 @@
   .modal-container {
     width: 60%;
   }
+  .dmr-modal-container {
+    width: 95%;
+  }
+  .remove-button-container {
+    width: 100%;
+  }
+  .invoice-label {
+    width: calc(50% - 1rem);
+  }
+  .invoice-block {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
   .filter-container {
     flex-direction: row;
   }
@@ -846,6 +900,28 @@
   .modal-container {
     width: 60%;
   }
+  .dmr-body-container {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .dmr-label {
+    width: calc(50% - 0.5rem) !important;
+  }
+  .dmr-modal-container {
+    width: 95%;
+  }
+  .remove-button-container {
+    width: 100%;
+  }
+  .invoice-label {
+    width: calc(50% - 1rem) !important;
+  }
+  .invoice-block {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
   .add-dmr-button-container {
     justify-content: end;
   }
@@ -873,13 +949,12 @@
   .pagination-container {
     justify-content: end;
   }
-  .customer-invoice-input-wrapper {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
+
   .customer-invoice-label {
-    width: calc(50% - 0.5rem);
+    width: 100%;
+  }
+  .customer-invoice-label-tsm-trucktype {
+    width: 100%;
   }
   .th:nth-child(2),
   .th:nth-child(3) {
@@ -907,6 +982,28 @@
 @media (min-width: 1200px) and (max-width: 1399px) {
   .modal-container {
     width: 50%;
+  }
+  .dmr-body-container {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .dmr-label {
+    width: calc(50% - 0.5rem) !important;
+  }
+  .dmr-modal-container {
+    width: 95%;
+  }
+  .remove-button-container {
+    width: 100%;
+  }
+  .invoice-label {
+    width: calc(25% - 1rem) !important;
+  }
+  .invoice-block {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
   .add-dmr-button-container {
     justify-content: end;
@@ -941,7 +1038,10 @@
     flex-wrap: wrap;
   }
   .customer-invoice-label {
-    width: calc(50% - 0.5rem);
+    width: 100%;
+  }
+  .customer-invoice-label-tsm-trucktype {
+    width: 100%;
   }
   .th:nth-child(2),
   .th:nth-child(3) {
@@ -969,6 +1069,28 @@
 @media (min-width: 1400px) {
   .modal-container {
     width: 40%;
+  }
+  .dmr-body-container {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .dmr-label {
+    width: calc(50% - 0.5rem) !important;
+  }
+  .dmr-modal-container {
+    width: 95%;
+  }
+  .remove-button-container {
+    width: 100%;
+  }
+  .invoice-label {
+    width: calc(25% - 1rem) !important;
+  }
+  .invoice-block {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
   .add-dmr-button-container {
     justify-content: end;
@@ -1003,7 +1125,10 @@
     flex-wrap: wrap;
   }
   .customer-invoice-label {
-    width: calc(50% - 0.5rem);
+    width: 100%;
+  }
+  .customer-invoice-label-tsm-trucktype {
+    width: 100%;
   }
   .th:nth-child(2),
   .th:nth-child(3) {

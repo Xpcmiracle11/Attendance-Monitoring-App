@@ -1,8 +1,9 @@
-version: "3.8" # Remove this line if you get a warning
+version: "3.8"
 
 services:
   db:
     image: mysql:8.4
+    container_name: ehd_mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: ehd_database
@@ -29,31 +30,33 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # backend:
-  #   build: ./server
-  #   env_file:
-  #     - ./server/.env
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   restart: on-failure
+  backend:
+    build: ./server
+    container_name: ehd_backend
+    env_file:
+      - ./server/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
 
-  # frontend:
-  #   build: ./attendance-monitoring-app
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
+  frontend:
+    build: ./attendance-monitoring-app
+    container_name: ehd_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    container_name: ehd_phpmyadmin
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
-      PMA_ARBITRARY: 1
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
       - "8081:80"

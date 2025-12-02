@@ -28,16 +28,11 @@ const insertMatrix = async (req, res) => {
     trip_type,
     source,
     destination,
-    fuel_10w,
-    fuel_6wf,
-    fuel_6wc4w,
+    truck_type,
     days_for_meals,
-    allowance_10w,
-    allowance_6wf,
-    allowance_6wc4w,
-    shipping_10w,
-    shipping_6wf,
-    shipping_6wc4w,
+    fuel,
+    allowance,
+    shipping,
   } = req.body;
 
   if (!principal || !code) {
@@ -51,6 +46,7 @@ const insertMatrix = async (req, res) => {
       "SELECT id FROM allowance_matrix WHERE principal = ? AND code = ?",
       [principal, code]
     );
+
     if (existing.length > 0) {
       return res
         .status(400)
@@ -59,26 +55,22 @@ const insertMatrix = async (req, res) => {
 
     const sql = `
       INSERT INTO allowance_matrix
-        (principal, code, trip_type, source, destination, fuel_10w, fuel_6wf, fuel_6wc4w, days_for_meals,
-         allowance_10w, allowance_6wf, allowance_6wc4w, shipping_10w, shipping_6wf, shipping_6wc4w)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (principal, code, trip_type, source, destination, truck_type,
+         days_for_meals, fuel, allowance, shipping)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+
     await runQuery(sql, [
       principal,
       code,
       trip_type || null,
       source || null,
       destination || null,
-      fuel_10w || 0,
-      fuel_6wf || 0,
-      fuel_6wc4w || 0,
+      truck_type || null,
       days_for_meals || 0,
-      allowance_10w || 0,
-      allowance_6wf || 0,
-      allowance_6wc4w || 0,
-      shipping_10w || 0,
-      shipping_6wf || 0,
-      shipping_6wc4w || 0,
+      fuel || 0,
+      allowance || 0,
+      shipping || 0,
     ]);
 
     res.json({ success: true, message: "Matrix added successfully." });
@@ -90,22 +82,18 @@ const insertMatrix = async (req, res) => {
 
 const updateMatrix = async (req, res) => {
   const { id } = req.params;
+
   const {
     principal,
     code,
     trip_type,
     source,
     destination,
-    fuel_10w,
-    fuel_6wf,
-    fuel_6wc4w,
+    truck_type,
     days_for_meals,
-    allowance_10w,
-    allowance_6wf,
-    allowance_6wc4w,
-    shipping_10w,
-    shipping_6wf,
-    shipping_6wc4w,
+    fuel,
+    allowance,
+    shipping,
   } = req.body;
 
   if (!id || !principal || !code) {
@@ -119,6 +107,7 @@ const updateMatrix = async (req, res) => {
       "SELECT id FROM allowance_matrix WHERE id = ?",
       [id]
     );
+
     if (matrix.length === 0) {
       return res
         .status(404)
@@ -129,39 +118,32 @@ const updateMatrix = async (req, res) => {
       "SELECT id FROM allowance_matrix WHERE principal = ? AND code = ? AND id != ?",
       [principal, code, id]
     );
+
     if (duplicate.length > 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Matrix with same Principal and Code already exists.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Matrix with same Principal and Code already exists.",
+      });
     }
 
     const sql = `
       UPDATE allowance_matrix
       SET principal = ?, code = ?, trip_type = ?, source = ?, destination = ?,
-          fuel_10w = ?, fuel_6wf = ?, fuel_6wc4w = ?, days_for_meals = ?,
-          allowance_10w = ?, allowance_6wf = ?, allowance_6wc4w = ?,
-          shipping_10w = ?, shipping_6wf = ?, shipping_6wc4w = ?
+          truck_type = ?, days_for_meals = ?, fuel = ?, allowance = ?, shipping = ?
       WHERE id = ?
     `;
-    const result = await runQuery(sql, [
+
+    await runQuery(sql, [
       principal,
       code,
       trip_type || null,
       source || null,
       destination || null,
-      fuel_10w || 0,
-      fuel_6wf || 0,
-      fuel_6wc4w || 0,
+      truck_type || null,
       days_for_meals || 0,
-      allowance_10w || 0,
-      allowance_6wf || 0,
-      allowance_6wc4w || 0,
-      shipping_10w || 0,
-      shipping_6wf || 0,
-      shipping_6wc4w || 0,
+      fuel || 0,
+      allowance || 0,
+      shipping || 0,
       id,
     ]);
 

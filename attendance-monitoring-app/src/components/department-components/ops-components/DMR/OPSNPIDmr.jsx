@@ -72,7 +72,8 @@ const OPSNPIDmr = () => {
     driverId: "",
     crewId: "",
     truckId: "",
-    destination: "",
+    tsmTrucktype: "",
+    allowanceMatrixId: "",
     secondLegFo: "",
   });
 
@@ -96,7 +97,8 @@ const OPSNPIDmr = () => {
     driverId: "",
     crewId: "",
     truckId: "",
-    destination: "",
+    tsmTrucktype: "",
+    allowanceMatrixId: "",
     secondLegFo: "",
     apiError: "",
   });
@@ -235,7 +237,7 @@ const OPSNPIDmr = () => {
     "Crews",
     "Plate Number",
     "Truck Type",
-    "Destination",
+    "TSM Truck Type",
     "Second Leg FO",
   ];
 
@@ -263,7 +265,8 @@ const OPSNPIDmr = () => {
       Crews: item.crew_names,
       "Plate Number": item.plate_number,
       "Truck Type": item.truck_type,
-      Destination: item.destination,
+      "TSM Truck Type": item.tsm_trucktype,
+      "Source and Destination": item.route_name,
       "Second Leg FO": item.second_leg_fo,
     }));
 
@@ -314,7 +317,8 @@ const OPSNPIDmr = () => {
       item.crew_names || "",
       item.plate_number || "",
       item.truck_type || "",
-      item.destination || "",
+      item.tsm_trucktype || "",
+      item.route_name || "",
       item.second_leg_fo || "",
     ]);
 
@@ -354,7 +358,8 @@ const OPSNPIDmr = () => {
           Crews: item.crew_names,
           "Plate Number": item.plate_number,
           "Truck Type": item.truck_type,
-          Destination: item.destination,
+          "TSM Truck Type": item.tsm_trucktype,
+          "Source and Destination": item.route_name,
           "Second Leg FO": item.second_leg_fo,
         };
         return new TableCell({
@@ -454,7 +459,8 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: "",
       truckId: "",
-      destination: "",
+      tsmTrucktype: "",
+      allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
     });
@@ -482,7 +488,8 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: "",
       truckId: "",
-      destination: "",
+      tsmTrucktype: "",
+      allowanceMatrixId: "",
       secondLegFo: "",
     });
     setErrors({
@@ -505,11 +512,12 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: "",
       truckId: "",
-      destination: "",
+      tsmTrucktype: "",
+      allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
     });
-    setCustomersInvoices([
+    setCustomers([
       {
         customerId: "",
         invoice: "",
@@ -518,7 +526,8 @@ const OPSNPIDmr = () => {
         amount: "",
         poNumber: "",
         sealNumber: "",
-        destination: "",
+        tsmTrucktype: "",
+        allowanceMatrixId: "",
         secondLegFo: "",
       },
     ]);
@@ -549,124 +558,94 @@ const OPSNPIDmr = () => {
 
   const handleAddDmr = async (e) => {
     e.preventDefault();
-    setErrors({
-      week: "",
-      waybill: "",
-      category: "",
-      siteId: "",
-      customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
-      foNumber: "",
-      sealNumber: "",
-      transactionDate: "",
-      truckGateIn: "",
-      dispatchDateAndTime: "",
-      rdd: "",
-      driverId: "",
-      crewId: "",
-      truckId: "",
-      destination: "",
-      secondLegFo: "",
-      apiError: "",
-    });
 
+    let newErrors = {};
     let hasError = false;
 
-    if (
-      customersInvoices.length === 0 ||
-      customersInvoices.some((ci) => !ci.customerId)
-    ) {
-      setErrors((prev) => ({
-        ...prev,
-        customerId: "At least one customer is required.",
-      }));
-      hasError = true;
-    }
+    customers.forEach((ci, custIndex) => {
+      if (!ci.customerId) {
+        newErrors[`customerId_${custIndex}`] = "Customer is required.";
+        hasError = true;
+      }
 
-    if (dmrsData.category === "Transshipment" && !dmrsData.foNumber?.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        foNumber: "FO Number is required for Transshipment.",
-      }));
-      hasError = true;
-    }
+      if (
+        dmrsData.category === "Transshipment" &&
+        String(ci.customerId) !== "152" &&
+        !ci.secondLegFo?.trim()
+      ) {
+        newErrors[`secondLegFo_${custIndex}`] =
+          "Second Leg FO Number is required for this customer.";
+        hasError = true;
+      }
+    });
 
-    if (
-      dmrsData.category === "Transshipment" &&
-      customersInvoices.some(
-        (ci) => String(ci.customerId) !== "152" && !ci.secondLegFo?.trim()
-      )
-    ) {
-      setErrors((prev) => ({
-        ...prev,
-        secondLegFo:
-          "Second Leg FO Number is required for Transshipment rows (except TRANSSHIPMENT).",
-      }));
-      hasError = true;
+    if (hasError) {
+      setErrors(newErrors);
+      return;
     }
-
-    if (
-      customersInvoices.some(
-        (ci) =>
-          String(ci.customerId) !== "152" &&
-          (!ci.invoice || String(ci.invoice).trim() === "")
-      )
-    ) {
-      setErrors((prev) => ({
-        ...prev,
-        invoice:
-          "Invoice number is required for all customers except TRANSSHIPMENT.",
-      }));
-      hasError = true;
-    }
-
-    if (hasError) return;
 
     try {
       const waybillMap = {};
 
-      const rows = customersInvoices.map((ci) => {
-        let key;
-        if (dmrsData.category === "Transshipment") {
-          key = `${dmrsData.foNumber}-${ci.secondLegFo || "NULL"}`;
-        } else {
-          key = `${dmrsData.foNumber}`;
-        }
+      const rows = customers.flatMap((ci) =>
+        (ci.invoices ?? []).map((inv) => {
+          let key;
+          if (dmrsData.category === "Transshipment") {
+            key = `${dmrsData.foNumber}-${ci.secondLegFo || "NULL"}`;
+          } else {
+            key = `${dmrsData.foNumber}`;
+          }
 
-        const waybill = waybillMap[key] || null;
-        waybillMap[key] = waybill;
+          const waybill = waybillMap[key] || null;
+          waybillMap[key] = waybill;
 
-        return {
-          week: dmrsData.week || null,
-          waybill,
-          category: dmrsData.category || null,
-          site_id: dmrsData.siteId ? parseInt(dmrsData.siteId) : null,
-          customer_id: ci.customerId ? parseInt(ci.customerId) : null,
-          invoice: ci.invoice || null,
-          cdn: ci.cdn || null,
-          quantity: ci.quantity || null,
-          amount: ci.amount || null,
-          po_number: ci.poNumber || null,
-          fo_number: dmrsData.foNumber || null,
-          seal_number: ci.sealNumber || null,
-          transaction_date: dmrsData.transactionDate || null,
-          truck_gate_in: dmrsData.truckGateIn || null,
-          dispatch_date_and_time: dmrsData.dispatchDateAndTime || null,
-          rdd: dmrsData.rdd || null,
-          driver_id: dmrsData.driverId ? parseInt(dmrsData.driverId) : null,
-          crews: dmrsData.crewId.map((id) => parseInt(id)),
-          truck_id: dmrsData.truckId ? parseInt(dmrsData.truckId) : null,
-          destination: ci.destination || dmrsData.destination || null,
-          second_leg_fo:
-            dmrsData.category === "Transshipment"
-              ? ci.secondLegFo || null
-              : null,
-        };
-      });
+          return {
+            week: dmrsData.week || null,
+            waybill,
+            category: dmrsData.category || null,
+            site_id: dmrsData.siteId ? parseInt(dmrsData.siteId) : null,
+            customer_id: ci.customerId ? parseInt(ci.customerId) : null,
+
+            invoice: inv.invoice || null,
+            cdn: inv.cdn || null,
+            quantity: inv.quantity || null,
+            amount: inv.amount || null,
+            po_number: inv.poNumber || null,
+            fo_number: dmrsData.foNumber || null,
+            seal_number: inv.sealNumber || null,
+
+            transaction_date: dmrsData.transactionDate || null,
+            truck_gate_in: dmrsData.truckGateIn || null,
+            dispatch_date_and_time: dmrsData.dispatchDateAndTime || null,
+            rdd: dmrsData.rdd || null,
+
+            driver_id: dmrsData.driverId ? parseInt(dmrsData.driverId) : null,
+
+            crews: Array.isArray(dmrsData.crewId)
+              ? dmrsData.crewId.map((id) => parseInt(id))
+              : [],
+
+            truck_id: dmrsData.truckId ? parseInt(dmrsData.truckId) : null,
+
+            tsm_trucktype:
+              inv.tsmTrucktype ||
+              ci.tsmTrucktype ||
+              dmrsData.tsmTrucktype ||
+              null,
+
+            allowance_matrix_id:
+              inv.allowanceMatrixId ??
+              ci.allowanceMatrixId ??
+              dmrsData.allowanceMatrixId ??
+              null,
+
+            second_leg_fo:
+              dmrsData.category === "Transshipment"
+                ? ci.secondLegFo || null
+                : null,
+          };
+        })
+      );
 
       const response = await axios.post(`${API_BASE_URL}/insert-dmr`, { rows });
 
@@ -688,84 +667,120 @@ const OPSNPIDmr = () => {
     }
   };
 
+  const formatDateForInput = (dateStr, isDateTime = false) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+
+    if (isDateTime) {
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    } else {
+      return d.toISOString().slice(0, 10);
+    }
+  };
+
   const toggleEditModal = (dmr = null) => {
-    setSelectedDmr(dmr);
+    if (!dmr) {
+      console.warn("toggleEditModal: dmr is null");
+      return;
+    }
+
+    const relatedDmrs = dmrs.filter((item) => item.fo_number === dmr.fo_number);
+    if (relatedDmrs.length === 0) {
+      console.warn("No DMRs found for FO:", dmr.fo_number);
+      return;
+    }
+
+    const customerMap = new Map();
+    relatedDmrs.forEach((record) => {
+      const custId = record.customer_id?.toString() || "unknown";
+      if (!customerMap.has(custId)) {
+        customerMap.set(custId, {
+          customerId: record.customer_id?.toString() || "",
+          customerName: record.customer_name || "",
+          secondLegFo: record.second_leg_fo || "",
+          invoices: [],
+        });
+      }
+      customerMap.get(custId).invoices.push({
+        invoice: record.invoice || "",
+        cdn: record.cdn || "",
+        quantity: record.quantity || "",
+        amount: record.amount || "",
+        poNumber: record.po_number || "",
+        sealNumber: record.seal_number || "",
+        allowanceMatrixId: record.allowance_matrix_id || null,
+        tsmTrucktype: record.tsm_trucktype || "",
+      });
+    });
+
+    const parsedCustomers = Array.from(customerMap.values());
+    setCustomers(parsedCustomers);
+
+    const base = relatedDmrs[0];
     setDmrsData({
-      week: dmr?.week || "",
-      waybill: dmr?.waybill || "",
-      category: dmr?.category || "",
-      siteId: dmr?.site_id || "",
-      customerId: dmr?.customer_id || "",
-      invoice: dmr?.invoice || "",
-      cdn: dmr?.cdn || "",
-      quantity: dmr?.quantity || "",
-      amount: dmr?.amount || "",
-      poNumber: dmr?.po_number || "",
-      foNumber: dmr?.fo_number || "",
-      sealNumber: dmr?.seal_number || "",
-      transactionDate: dmr?.transaction_date || "",
-      truckGateIn: dmr?.truck_gate_in || "",
-      dispatchDateAndTime: dmr?.dispatch_date_and_time || "",
-      rdd: dmr?.rdd || "",
-      driverId: dmr?.driver_id || "",
-      crewId: dmr?.crew_id || "",
-      truckId: dmr?.truck_id || "",
-      destination: dmr?.destination || "",
-      secondLegFo: dmr?.second_leg_fo || "",
+      week: base.week?.toString() || "",
+      category: base.category || "",
+      siteId: base.site_id?.toString() || "",
+      foNumber: base.fo_number || "",
+      transactionDate: base.transaction_date
+        ? formatDateForInput(base.transaction_date)
+        : "",
+      truckGateIn: base.truck_gate_in
+        ? formatDateForInput(base.truck_gate_in, true)
+        : "",
+      dispatchDateAndTime: base.dispatch_date_and_time
+        ? formatDateForInput(base.dispatch_date_and_time, true)
+        : "",
+      rdd: base.rdd ? formatDateForInput(base.rdd) : "",
+      driverId: base.driver_id?.toString() || "",
+      crewId: base.crews ? base.crews.split(",").map((s) => s.trim()) : [],
+      truckId: base.truck_id?.toString() || "",
     });
+
+    setSelectedDmr(dmr);
     setIsEditModalOpen(true);
-    setErrors({
-      week: "",
-      waybill: "",
-      category: "",
-      siteId: "",
-      customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
-      foNumber: "",
-      sealNumber: "",
-      transactionDate: "",
-      truckGateIn: "",
-      dispatchDateAndTime: "",
-      rdd: "",
-      driverId: "",
-      crewId: "",
-      truckId: "",
-      destination: "",
-      secondLegFo: "",
-      apiError: "",
-    });
+    console.log("Modal opened with customers:", parsedCustomers);
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedDmr(null);
+
     setDmrsData({
       week: "",
-      waybill: "",
       category: "",
       siteId: "",
-      customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
       foNumber: "",
-      sealNumber: "",
       transactionDate: "",
       truckGateIn: "",
       dispatchDateAndTime: "",
       rdd: "",
       driverId: "",
-      crewId: "",
+      crewId: [],
       truckId: "",
-      destination: "",
-      secondLegFo: "",
     });
+    setCustomers([
+      {
+        customerId: "",
+        secondLegFo: "",
+        invoices: [
+          {
+            invoice: "",
+            cdn: "",
+            quantity: "",
+            amount: "",
+            poNumber: "",
+            sealNumber: "",
+            tsmTrucktype: "",
+            allowanceMatrixId: null,
+          },
+        ],
+      },
+    ]);
+
     setErrors({
       week: "",
       waybill: "",
@@ -786,7 +801,8 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: "",
       truckId: "",
-      destination: "",
+      tsmTrucktype: "",
+      allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
     });
@@ -794,6 +810,7 @@ const OPSNPIDmr = () => {
 
   const handleEditDmr = async (e) => {
     e.preventDefault();
+
     setErrors({
       week: "",
       waybill: "",
@@ -814,76 +831,124 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: "",
       truckId: "",
-      destination: "",
+      tsmTrucktype: "",
+      allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
     });
 
-    if (!selectedDmr || !selectedDmr.id) {
+    if (!selectedDmr || !selectedDmr.fo_number) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid DMR selected.",
+        apiError: "Invalid FO Number selected.",
       }));
       return;
     }
 
+    let newErrors = {};
     let hasError = false;
 
-    if (!dmrsData.customerId.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        customerId: "Customer is required.",
-      }));
-      hasError = true;
-    }
+    customers.forEach((ci, custIndex) => {
+      if (!ci.customerId) {
+        newErrors[`customerId_${custIndex}`] = "Customer is required.";
+        hasError = true;
+      }
 
-    if (!dmrsData.foNumber.trim()) {
-      setErrors((prev) => ({
-        ...prev,
-        foNumber: "FO Number is required.",
-      }));
-      hasError = true;
-    }
+      if (
+        dmrsData.category === "Transshipment" &&
+        String(ci.customerId) !== "152" &&
+        !ci.secondLegFo?.trim()
+      ) {
+        newErrors[`secondLegFo_${custIndex}`] =
+          "Second Leg FO Number is required for this customer.";
+        hasError = true;
+      }
+    });
 
-    if (hasError) return;
+    if (hasError) {
+      setErrors(newErrors);
+      return;
+    }
 
     try {
+      const waybillMap = {};
+
+      const rows = customers.flatMap((ci) =>
+        (ci.invoices ?? []).map((inv) => {
+          let key;
+          if (dmrsData.category === "Transshipment") {
+            key = `${dmrsData.foNumber}-${ci.secondLegFo || "NULL"}`;
+          } else {
+            key = `${dmrsData.foNumber}`;
+          }
+
+          const waybill = waybillMap[key] || null;
+          waybillMap[key] = waybill;
+
+          return {
+            week: dmrsData.week || null,
+            waybill,
+            category: dmrsData.category || null,
+            site_id: dmrsData.siteId ? parseInt(dmrsData.siteId) : null,
+            customer_id: ci.customerId ? parseInt(ci.customerId) : null,
+
+            invoice: inv.invoice || null,
+            cdn: inv.cdn || null,
+            quantity: inv.quantity || null,
+            amount: inv.amount || null,
+            po_number: inv.poNumber || null,
+            fo_number: dmrsData.foNumber || null,
+            seal_number: inv.sealNumber || null,
+
+            transaction_date: dmrsData.transactionDate || null,
+            truck_gate_in: dmrsData.truckGateIn || null,
+            dispatch_date_and_time: dmrsData.dispatchDateAndTime || null,
+            rdd: dmrsData.rdd || null,
+
+            driver_id: dmrsData.driverId ? parseInt(dmrsData.driverId) : null,
+
+            crews: Array.isArray(dmrsData.crewId)
+              ? dmrsData.crewId.map((id) => parseInt(id))
+              : [],
+
+            truck_id: dmrsData.truckId ? parseInt(dmrsData.truckId) : null,
+
+            tsm_trucktype:
+              inv.tsmTrucktype ||
+              ci.tsmTrucktype ||
+              dmrsData.tsmTrucktype ||
+              null,
+
+            allowance_matrix_id:
+              inv.allowanceMatrixId ??
+              ci.allowanceMatrixId ??
+              dmrsData.allowanceMatrixId ??
+              null,
+
+            second_leg_fo:
+              dmrsData.category === "Transshipment"
+                ? ci.secondLegFo || null
+                : null,
+          };
+        })
+      );
+
       const response = await axios.put(
-        `${API_BASE_URL}/update-dmr/${selectedDmr.id}`,
-        {
-          week: dmrsData.week,
-          waybill: dmrsData.waybill,
-          category: dmrsData.category,
-          site_id: dmrsData.siteId,
-          customer_id: dmrsData.customerId,
-          invoice: dmrsData.invoice,
-          cdn: dmrsData.cdn,
-          quantity: dmrsData.quantity,
-          amount: dmrsData.amount,
-          po_number: dmrsData.poNumber,
-          fo_number: dmrsData.foNumber,
-          seal_number: dmrsData.sealNumber,
-          transaction_date: dmrsData.transactionDate,
-          truck_gate_in: dmrsData.truckGateIn,
-          dispatch_date_and_time: dmrsData.dispatchDateAndTime,
-          rdd: dmrsData.rdd,
-          driver_id: dmrsData.driverId,
-          crew_id: dmrsData.crewId,
-          truck_id: dmrsData.truckId,
-          destination: dmrsData.destination,
-          second_leg_fo: dmrsData.secondLegFo,
-        }
+        `${API_BASE_URL}/update-dmr/${encodeURIComponent(dmrsData.foNumber)}`,
+        { rows }
       );
 
       if (response.data.success) {
         setDmrs((prevDmrs) =>
-          prevDmrs.map((dmr) =>
-            dmr.id === selectedDmr.id
-              ? { ...dmrsData, id: selectedDmr.id }
-              : dmr
-          )
+          prevDmrs
+            .filter((dmr) => dmr.fo_number !== dmrsData.foNumber)
+            .concat(
+              rows.map((r) => ({
+                ...r,
+                crews: Array.isArray(r.crews) ? r.crews.join(",") : r.crews,
+              }))
+            )
         );
-        fetchDmrs();
         closeEditModal();
       } else {
         setErrors((prev) => ({
@@ -892,6 +957,7 @@ const OPSNPIDmr = () => {
         }));
       }
     } catch (error) {
+      console.error("FRONTEND: Axios error in handleEditDmr:", error);
       setErrors((prev) => ({
         ...prev,
         apiError: error.response?.data?.message || "Failed to update DMR.",
@@ -910,19 +976,26 @@ const OPSNPIDmr = () => {
   };
 
   const handleDeleteDmr = async () => {
-    if (!selectedDmr || !selectedDmr.id) return;
+    if (!selectedDmr || !selectedDmr.fo_number) {
+      setErrors((prev) => ({
+        ...prev,
+        apiError: "Invalid FO Number selected for deletion.",
+      }));
+      return;
+    }
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/delete-dmr/${selectedDmr.id}`
+        `${API_BASE_URL}/delete-dmr-by-fo/${encodeURIComponent(
+          selectedDmr.fo_number
+        )}`
       );
 
       if (response.data.success) {
         setDmrs((prevDmrs) =>
-          prevDmrs.filter((dmr) => dmr.id !== selectedDmr.id)
+          prevDmrs.filter((dmr) => dmr.fo_number !== selectedDmr.fo_number)
         );
         fetchDmrs();
-        closeDeleteModal();
       } else {
         setErrors((prev) => ({
           ...prev,
@@ -935,7 +1008,7 @@ const OPSNPIDmr = () => {
         ...prev,
         apiError:
           error.response?.data?.message ||
-          "An error occurred while deleting the DMR.",
+          "An error occurred while deleting the DMR group.",
       }));
     }
   };
@@ -970,92 +1043,103 @@ const OPSNPIDmr = () => {
     };
   }, []);
 
-  const [customersInvoices, setCustomersInvoices] = useState([
+  const [customers, setCustomers] = useState([
     {
       customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
-      sealNumber: "",
-      destination: "",
       secondLegFo: "",
+      invoices: [
+        {
+          invoice: "",
+          cdn: "",
+          quantity: "",
+          amount: "",
+          poNumber: "",
+          sealNumber: "",
+          tsmTrucktype: "",
+          allowanceMatrixId: null,
+        },
+      ],
     },
   ]);
 
-  const handleCustomerChange = (index, selected) => {
-    const updated = [...customersInvoices];
-    updated[index].customerId = selected?.value || "";
-    setCustomersInvoices(updated);
+  const handleCustomerChange = (custIndex, selected) => {
+    setCustomers((prev) => {
+      const updated = [...prev];
+      updated[custIndex].customerId = selected ? selected.value : "";
+      return updated;
+    });
   };
 
-  const handleInvoiceChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].invoice = value;
-    setCustomersInvoices(updated);
+  const handleSecondLegFoChange = (custIndex, value) => {
+    setCustomers((prev) => {
+      const updated = [...prev];
+      updated[custIndex].secondLegFo = value;
+      return updated;
+    });
   };
 
-  const handleCdnChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].cdn = value;
-    setCustomersInvoices(updated);
+  const handleInvoiceFieldChange = (custIndex, invIndex, field, value) => {
+    setCustomers((prev) => {
+      const updated = [...prev];
+      updated[custIndex].invoices[invIndex][field] = value;
+      return updated;
+    });
   };
 
-  const handleQuantityChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].quantity = value;
-    setCustomersInvoices(updated);
-  };
-
-  const handleAmountChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].amount = value;
-    setCustomersInvoices(updated);
-  };
-
-  const handlePoNumberChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].poNumber = value;
-    setCustomersInvoices(updated);
-  };
-
-  const handleSealNumberChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].sealNumber = value;
-    setCustomersInvoices(updated);
-  };
-
-  const handleDestinationChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].destination = value;
-    setCustomersInvoices(updated);
-  };
-
-  const handleSecondLegFoChange = (index, value) => {
-    const updated = [...customersInvoices];
-    updated[index].secondLegFo = value;
-    setCustomersInvoices(updated);
-  };
-
-  const addCustomerInvoice = () => {
-    setCustomersInvoices((prev) => [
-      ...prev,
-      {
-        customerId: "",
+  const addInvoice = (custIndex) => {
+    setCustomers((prev) => {
+      const updated = [...prev];
+      updated[custIndex].invoices.push({
         invoice: "",
         cdn: "",
         quantity: "",
         amount: "",
         poNumber: "",
         sealNumber: "",
+        tsmTrucktype: "",
+        allowanceMatrixId: null,
+      });
+      return updated;
+    });
+  };
+
+  const removeInvoice = (custIndex, invIndex) => {
+    setCustomers((prev) =>
+      prev.map((cust, i) =>
+        i !== custIndex
+          ? cust
+          : {
+              ...cust,
+              invoices: cust.invoices.filter((_, ii) => ii !== invIndex),
+            }
+      )
+    );
+  };
+
+  const addCustomer = () => {
+    setCustomers((prev) => [
+      ...prev,
+      {
+        customerId: "",
         secondLegFo: "",
+        invoices: [
+          {
+            invoice: "",
+            cdn: "",
+            quantity: "",
+            amount: "",
+            poNumber: "",
+            sealNumber: "",
+            tsmTrucktype: "",
+            allowanceMatrixId: null,
+          },
+        ],
       },
     ]);
   };
 
-  const removeCustomerInvoice = (index) => {
-    setCustomersInvoices((prev) => prev.filter((_, i) => i !== index));
+  const removeCustomer = (custIndex) => {
+    setCustomers((prev) => prev.filter((_, i) => i !== custIndex));
   };
 
   const categoryOptions = [
@@ -1247,10 +1331,58 @@ const OPSNPIDmr = () => {
       });
   }, [dmrs, selectedDmr]);
 
+  const [allowanceMatrixOptions, setAllowanceMatrixOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/matrixes`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const options = response.data.data.map((matrix) => ({
+            value: String(matrix.id),
+            label: `${matrix.source} - ${matrix.destination}`,
+          }));
+
+          setAllowanceMatrixOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching departments:", error);
+      });
+  }, []);
+
+  const [tsmTrucktypeOptions, setTsmTrucktypeOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/trucks`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const uniqueTypes = [
+            ...new Set(response.data.data.map((truck) => truck.truck_type)),
+          ];
+
+          const options = uniqueTypes.map((type) => ({
+            value: type,
+            label: type,
+          }));
+
+          setTsmTrucktypeOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching trucks:", error);
+      });
+  }, []);
+
   return (
     <div className={styles["dmr-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>Dmr</h1>
+        <h1 className={styles["page-title"]}>DMR</h1>
       </div>
       <div className={styles["content-body-container"]}>
         <div className={styles["add-dmr-button-container"]}>
@@ -1642,81 +1774,112 @@ const OPSNPIDmr = () => {
                 <th className={styles.th}>Crews</th>
                 <th className={styles.th}>Plate Number</th>
                 <th className={styles.th}>Truck Type</th>
-                <th className={styles.th}>Destination</th>
+                <th className={styles.th}>TSM Truck Type</th>
+                <th className={styles.th}>Source and Destination</th>
                 <th className={styles.th}>Second Leg FO</th>
+                <th className={styles.th}>Status</th>
                 <th className={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody className={styles.tbody}>
-              {paginatedDmrs.map((dmr, index) => (
-                <tr className={styles.btr} key={index}>
-                  <td className={styles.td}>{dmr.week}</td>
-                  <td className={styles.td}>{dmr.waybill}</td>
-                  <td className={styles.td}>{dmr.category}</td>
-                  <td className={styles.td}>
-                    {dmr.site_name} {dmr.site_code}
-                  </td>
-                  <td className={styles.td}>{dmr.customer_number}</td>
-                  <td className={styles.td}>{dmr.customer_name}</td>
-                  <td className={styles.td}>{dmr.invoice}</td>
-                  <td className={styles.td}>{dmr.cdn}</td>
-                  <td className={styles.td}>{dmr.quantity}</td>
-                  <td className={styles.td}>{dmr.amount}</td>
-                  <td className={styles.td}>{dmr.po_number}</td>
-                  <td className={styles.td}>{dmr.fo_number}</td>
-                  <td className={styles.td}>{dmr.seal_number}</td>
-                  <td className={styles.td}>
-                    {formatDate(dmr.transaction_date)}
-                  </td>
-                  <td className={styles.td}>{formatDate(dmr.truck_gate_in)}</td>
-                  <td className={styles.td}>
-                    {formatDate(dmr.dispatch_date_and_time)}
-                  </td>
-                  <td className={styles.td}>{formatDate(dmr.rdd)}</td>
-                  <td className={styles.td}>{dmr.driver_name}</td>
-                  <td className={styles.td}>{dmr.crew_names}</td>
-                  <td className={styles.td}>{dmr.plate_number}</td>
-                  <td className={styles.td}>{dmr.truck_type}</td>
-                  <td className={styles.td}>{dmr.destination}</td>
-                  <td className={styles.td}>{dmr.second_leg_fo}</td>
-                  <td className={styles.td}>
-                    <div className={styles["action-container"]}>
-                      <button
-                        className={styles["edit-button"]}
-                        onMouseEnter={() => setIsEditHovered(index)}
-                        onMouseLeave={() => setIsEditHovered(null)}
-                        onClick={() => toggleEditModal(dmr)}
-                      >
-                        <img
-                          className={styles["edit-icon"]}
-                          src={
-                            isEditHovered === index ? editHoverIcon : editIcon
-                          }
-                          alt="Edit"
-                        />
-                        <p>Edit</p>
-                      </button>
-                      <button
-                        className={styles["delete-button"]}
-                        onMouseEnter={() => setIsDeleteHovered(index)}
-                        onMouseLeave={() => setIsDeleteHovered(null)}
-                        onClick={() => toggleDeleteModal(dmr)}
-                      >
-                        <img
-                          className={styles["delete-icon"]}
-                          src={
-                            isDeleteHovered === index
-                              ? deleteHoverIcon
-                              : deleteIcon
-                          }
-                          alt="Delete"
-                        />
-                        <p>Delete</p>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {paginatedDmrs.map((dmr, index) => {
+                const showActions =
+                  index === 0 ||
+                  dmr.fo_number !== paginatedDmrs[index - 1].fo_number;
+
+                return (
+                  <tr className={styles.btr} key={index}>
+                    <td className={styles.td}>
+                      <span
+                        className={
+                          dmr.status === "Pending"
+                            ? styles["status-pin-pending"]
+                            : dmr.status === "Approved"
+                            ? styles["status-pin-approved"]
+                            : dmr.status === "Declined"
+                            ? styles["status-pin-declined"]
+                            : ""
+                        }
+                      ></span>
+                      {dmr.week}
+                    </td>
+
+                    <td className={styles.td}>{dmr.waybill}</td>
+                    <td className={styles.td}>{dmr.category}</td>
+                    <td className={styles.td}>
+                      {dmr.site_name} {dmr.site_code}
+                    </td>
+                    <td className={styles.td}>{dmr.customer_number}</td>
+                    <td className={styles.td}>{dmr.customer_name}</td>
+                    <td className={styles.td}>{dmr.invoice}</td>
+                    <td className={styles.td}>{dmr.cdn}</td>
+                    <td className={styles.td}>{dmr.quantity}</td>
+                    <td className={styles.td}>{dmr.amount}</td>
+                    <td className={styles.td}>{dmr.po_number}</td>
+                    <td className={styles.td}>{dmr.fo_number}</td>
+                    <td className={styles.td}>{dmr.seal_number}</td>
+                    <td className={styles.td}>
+                      {formatDate(dmr.transaction_date)}
+                    </td>
+                    <td className={styles.td}>
+                      {formatDate(dmr.truck_gate_in)}
+                    </td>
+                    <td className={styles.td}>
+                      {formatDate(dmr.dispatch_date_and_time)}
+                    </td>
+                    <td className={styles.td}>{formatDate(dmr.rdd)}</td>
+                    <td className={styles.td}>{dmr.driver_name}</td>
+                    <td className={styles.td}>{dmr.crew_names}</td>
+                    <td className={styles.td}>{dmr.plate_number}</td>
+                    <td className={styles.td}>{dmr.truck_type}</td>
+                    <td className={styles.td}>{dmr.tsm_trucktype}</td>
+                    <td className={styles.td}>{dmr.route_name}</td>
+                    <td className={styles.td}>{dmr.second_leg_fo}</td>
+                    <td className={styles.td}>{dmr.status}</td>
+                    <td className={styles.td}>
+                      {showActions && (
+                        <div className={styles["action-container"]}>
+                          <button
+                            className={styles["edit-button"]}
+                            onMouseEnter={() => setIsEditHovered(index)}
+                            onMouseLeave={() => setIsEditHovered(null)}
+                            onClick={() => toggleEditModal(dmr)}
+                          >
+                            <img
+                              className={styles["edit-icon"]}
+                              src={
+                                isEditHovered === index
+                                  ? editHoverIcon
+                                  : editIcon
+                              }
+                              alt="Edit"
+                            />
+                            <p>Edit</p>
+                          </button>
+                          <button
+                            className={styles["delete-button"]}
+                            onMouseEnter={() => setIsDeleteHovered(index)}
+                            onMouseLeave={() => setIsDeleteHovered(null)}
+                            onClick={() => toggleDeleteModal(dmr)}
+                          >
+                            <img
+                              className={styles["delete-icon"]}
+                              src={
+                                isDeleteHovered === index
+                                  ? deleteHoverIcon
+                                  : deleteIcon
+                              }
+                              alt="Delete"
+                            />
+                            <p>Delete</p>
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+
               {paginatedDmrs.length === 0 && (
                 <tr className={styles.btr}>
                   <td
@@ -1819,10 +1982,10 @@ const OPSNPIDmr = () => {
       {isAddModalOpen && (
         <Modal isOpen={isAddModalOpen} onClose={toggleAddModal}>
           <div
-            className={`${styles["modal-container"]} ${styles["add-modal-container"]}`}
+            className={`${styles["modal-container"]} ${styles["add-modal-container"]} ${styles["dmr-modal-container"]}`}
           >
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Add Dmr</h3>
+              <h3 className={styles["modal-title"]}>Add DMR</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeAddModal}
@@ -1835,206 +1998,633 @@ const OPSNPIDmr = () => {
               </button>
             </div>
             <form
-              className={styles["modal-body-container"]}
+              className={`${styles["modal-body-container"]} ${styles["modal-dmr-body-container"]}`}
               onSubmit={handleAddDmr}
             >
-              <label className={styles.label} htmlFor="category">
-                Category
-                <Select
-                  className={`${styles.input} ${
-                    errors.category ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  id="category"
-                  name="category"
-                  options={categoryOptions}
-                  value={
-                    categoryOptions.find(
-                      (opt) => opt.value === dmrsData.category
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      category: selected?.value || "",
-                    }))
-                  }
-                  placeholder="Select Category"
-                />
-                {errors.category && (
-                  <p className={styles["error-message"]}>{errors.category}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="site_id">
-                Site
-                <Select
-                  className={`${styles.input} ${
-                    errors.siteId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
+              <div className={styles["dmr-body-container"]}>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="category"
+                >
+                  Category
+                  <Select
+                    className={`${styles.input} ${
+                      errors.category ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: "var(--text-primary)",
+                        border: `1px solid var(--borders)`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: "var(--text-primary)",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: "var(--text-primary)",
+                      }),
+                    }}
+                    id="category"
+                    name="category"
+                    options={categoryOptions}
+                    value={
+                      categoryOptions.find(
+                        (opt) => opt.value === dmrsData.category
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        category: selected?.value || "",
+                      }))
+                    }
+                    placeholder="Select Category"
+                  />
+                  {errors.category && (
+                    <p className={styles["error-message"]}>{errors.category}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="site_id"
+                >
+                  Site
+                  <Select
+                    className={`${styles.input} ${
+                      errors.siteId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
                           ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="site_id"
-                  name="siteId"
-                  options={siteOptions}
-                  value={
-                    siteOptions.find((opt) => opt.value === dmrsData.siteId) ||
-                    null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      siteId: selected?.value || "",
-                    }))
-                  }
-                  placeholder="Select Site"
-                />
-                {errors.siteId && (
-                  <p className={styles["error-message"]}>{errors.siteId}</p>
-                )}
-              </label>
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="site_id"
+                    name="siteId"
+                    options={siteOptions}
+                    value={
+                      siteOptions.find(
+                        (opt) => opt.value === dmrsData.siteId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        siteId: selected?.value || "",
+                      }))
+                    }
+                    placeholder="Select Site"
+                  />
+                  {errors.siteId && (
+                    <p className={styles["error-message"]}>{errors.siteId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="fo_number"
+                >
+                  FO Number
+                  <input
+                    className={`${styles.input} ${
+                      errors.foNumber ? styles["error-input"] : ""
+                    }`}
+                    type="text"
+                    id="fo_number"
+                    name="foNumber"
+                    value={dmrsData.foNumber}
+                    onChange={handleInputChange}
+                  />
+                  {errors.foNumber && (
+                    <p className={styles["error-message"]}>{errors.foNumber}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="transaction_date"
+                >
+                  Transaction Date
+                  <input
+                    className={`${styles.input} ${
+                      errors.transactionDate ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="transaction_date"
+                    name="transactionDate"
+                    value={dmrsData.transactionDate}
+                    onChange={handleInputChange}
+                  />
+                  {errors.transactionDate && (
+                    <p className={styles["error-message"]}>
+                      {errors.transactionDate}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="truck_gate_in"
+                >
+                  Truck Gate In
+                  <input
+                    className={`${styles.input} ${
+                      errors.truckGateIn ? styles["error-input"] : ""
+                    }`}
+                    type="datetime-local"
+                    id="truck_gate_in"
+                    name="truckGateIn"
+                    value={dmrsData.truckGateIn}
+                    onChange={handleInputChange}
+                  />
+                  {errors.truckGateIn && (
+                    <p className={styles["error-message"]}>
+                      {errors.truckGateIn}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="dispatch_date_and_time"
+                >
+                  Dispatch Date and Time
+                  <input
+                    className={`${styles.input} ${
+                      errors.dispatchDateAndTime ? styles["error-input"] : ""
+                    }`}
+                    type="datetime-local"
+                    id="dispatch_date_and_time"
+                    name="dispatchDateAndTime"
+                    value={dmrsData.dispatchDateAndTime}
+                    onChange={handleInputChange}
+                  />
+                  {errors.dispatchDateAndTime && (
+                    <p className={styles["error-message"]}>
+                      {errors.dispatchDateAndTime}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="rdd"
+                >
+                  RDD
+                  <input
+                    className={`${styles.input} ${
+                      errors.rdd ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="rdd"
+                    name="rdd"
+                    value={dmrsData.rdd}
+                    onChange={handleInputChange}
+                  />
+                  {errors.rdd && (
+                    <p className={styles["error-message"]}>{errors.rdd}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="driver_id"
+                >
+                  Driver
+                  <Select
+                    className={`${styles.input} ${
+                      errors.driverId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="driver_id"
+                    name="driverId"
+                    options={driverOptions}
+                    value={
+                      driverOptions.find(
+                        (opt) => opt.value === dmrsData.driverId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        driverId: selected?.value || "",
+                      }))
+                    }
+                    classNamePrefix="react-select"
+                    placeholder="Select Driver"
+                  />
+                  {errors.driverId && (
+                    <p className={styles["error-message"]}>{errors.driverId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="crew_id"
+                >
+                  Crew Members
+                  <Select
+                    className={`${styles.input} ${
+                      errors.crew_id ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    isMulti
+                    id="crew_id"
+                    name="crewId"
+                    options={crewOptions}
+                    value={crewOptions.filter((opt) =>
+                      dmrsData.crewId?.includes(opt.value)
+                    )}
+                    onChange={(selected) => {
+                      const values = selected
+                        ? selected.map((opt) => opt.value)
+                        : [];
+                      setDmrsData((prev) => ({ ...prev, crewId: values }));
+                    }}
+                    classNamePrefix="react-select"
+                    placeholder="Select Crew Members"
+                  />
+                  {errors.crewId && (
+                    <p className={styles["error-message"]}>{errors.crewId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="truck_id"
+                >
+                  Truck (Plate Number)
+                  <Select
+                    className={`${styles.input} ${
+                      errors.truckId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="truck_id"
+                    name="truckId"
+                    options={plateNumberOptions}
+                    value={
+                      plateNumberOptions.find(
+                        (opt) => opt.value === dmrsData.truckId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        truckId: selected?.value || "",
+                      }))
+                    }
+                    classNamePrefix="react-select"
+                    placeholder="Select Truck"
+                  />
+                  {errors.truckId && (
+                    <p className={styles["error-message"]}>{errors.truckId}</p>
+                  )}
+                </label>
+              </div>
               <div className={styles["invoice-customer-container"]}>
-                {customersInvoices.map((item, index) => (
-                  <div key={index} className={styles["customer-invoice-row"]}>
+                {(customers ?? []).map((customer, custIndex) => (
+                  <div key={custIndex} className={styles["customer-block"]}>
                     <div className={styles["customer-invoice-input-container"]}>
-                      {customersInvoices.length > 1 && (
+                      {customers.length > 1 && (
                         <div className={styles["remove-button-container"]}>
                           <button
                             className={styles["remove-button"]}
                             type="button"
-                            onClick={() => removeCustomerInvoice(index)}
+                            onClick={() => removeCustomer(custIndex)}
                           >
                             <img
                               className={styles["remove-button-icon"]}
@@ -2044,629 +2634,546 @@ const OPSNPIDmr = () => {
                           </button>
                         </div>
                       )}
-                      <div className={styles["customer-invoice-input-wrapper"]}>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          Customer
-                          <Select
-                            className={`${styles.input} ${
-                              errors[`customerId_${index}`]
-                                ? styles["error-input"]
-                                : ""
-                            }`}
-                            styles={{
-                              control: (base, state) => ({
-                                ...base,
-                                borderColor: state.isFocused
-                                  ? "var(--text-secondary)"
-                                  : "var(--borders)",
-                                boxShadow: state.isFocused
-                                  ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                  : state.isHovered
-                                  ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                  : "none",
+                      <label
+                        className={`${styles.label} ${styles["customer-invoice-label"]}`}
+                        htmlFor="customer"
+                      >
+                        Customer
+                        <Select
+                          className={`${styles.input} ${
+                            errors[`customerId_${custIndex}`]
+                              ? styles["error-input"]
+                              : ""
+                          }`}
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: state.isFocused
+                                ? "var(--text-secondary)"
+                                : "var(--borders)",
+                              boxShadow: state.isFocused
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : state.isHovered
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : "none",
+                              backgroundColor: isDarkMode
+                                ? "var(--cards)"
+                                : "var(--background)",
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                              "&:hover": {
+                                borderColor: "var(--text-secondary)",
+                                boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                              },
+                              transition: "all 0.3s ease-in-out",
+                              cursor: "pointer",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              backgroundColor: isDarkMode
+                                ? "var(--cards)"
+                                : "var(--background)",
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                              border: `1px solid ${
+                                isDarkMode ? "var(--borders)" : "var(--borders)"
+                              }`,
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? isDarkMode
+                                  ? "#333333"
+                                  : "#e9ecef"
+                                : state.isFocused
+                                ? isDarkMode
+                                  ? "#2a2a2a"
+                                  : "#f8f9fa"
+                                : base.backgroundColor,
+                              color: state.isSelected
+                                ? isDarkMode
+                                  ? "var(--text-primary)"
+                                  : "var(--text-primary)"
+                                : base.color,
+                              cursor: "pointer",
+                              "&:hover": {
                                 backgroundColor: isDarkMode
-                                  ? "var(--cards)"
-                                  : "var(--background)",
-                                color: isDarkMode
-                                  ? "var(--text-primary)"
-                                  : "var(--text-primary)",
-                                "&:hover": {
-                                  borderColor: "var(--text-secondary)",
-                                  boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                                },
-                                transition: "all 0.3s ease-in-out",
-                                cursor: "pointer",
-                              }),
-                              menu: (base) => ({
-                                ...base,
-                                backgroundColor: isDarkMode
-                                  ? "var(--cards)"
-                                  : "var(--background)",
-                                color: isDarkMode
-                                  ? "var(--text-primary)"
-                                  : "var(--text-primary)",
-                                border: `1px solid ${
-                                  isDarkMode
-                                    ? "var(--borders)"
-                                    : "var(--borders)"
-                                }`,
-                              }),
-                              option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isSelected
-                                  ? isDarkMode
-                                    ? "#333333"
-                                    : "#e9ecef"
-                                  : state.isFocused
-                                  ? isDarkMode
-                                    ? "#2a2a2a"
-                                    : "#f8f9fa"
-                                  : base.backgroundColor,
-                                color: state.isSelected
-                                  ? isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)"
-                                  : base.color,
-                                cursor: "pointer",
-                                "&:hover": {
-                                  backgroundColor: isDarkMode
-                                    ? "#2a2a2a"
-                                    : "#f8f9fa",
-                                },
-                              }),
-                              singleValue: (base) => ({
-                                ...base,
-                                color: isDarkMode
-                                  ? "var(--text-primary)"
-                                  : "var(--text-primary)",
-                              }),
-                              placeholder: (base) => ({
-                                ...base,
-                                color: isDarkMode
-                                  ? "var(--text-secondary)"
-                                  : "var(--text-secondary)",
-                              }),
-                              input: (base) => ({
-                                ...base,
-                                color: isDarkMode
-                                  ? "var(--text-primary)"
-                                  : "var(--text-primary)",
-                              }),
-                            }}
-                            options={customerOptions}
-                            value={customerOptions.find(
-                              (opt) => opt.value === item.customerId
+                                  ? "#2a2a2a"
+                                  : "#f8f9fa",
+                              },
+                            }),
+                            singleValue: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                            }),
+                            placeholder: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-secondary)"
+                                : "var(--text-secondary)",
+                            }),
+                            input: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                            }),
+                          }}
+                          id="customer"
+                          options={customerOptions}
+                          placeholder="Select Customer"
+                          value={customerOptions.find(
+                            (opt) => opt.value === customer.customerId
+                          )}
+                          onChange={(selected) =>
+                            handleCustomerChange(custIndex, selected)
+                          }
+                        />
+                        {errors[`customerId_${custIndex}`] && (
+                          <p className={styles["error-message"]}>
+                            {errors[`customerId_${custIndex}`]}
+                          </p>
+                        )}
+                      </label>
+                      {dmrsData.category === "Transshipment" &&
+                        customer.customerId &&
+                        String(customer.customerId) !== "152" && (
+                          <label className={styles.label}>
+                            Second Leg FO Number
+                            <input
+                              className={styles.input}
+                              type="text"
+                              value={customer.secondLegFo || ""}
+                              onChange={(e) =>
+                                handleSecondLegFoChange(
+                                  custIndex,
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`secondLegFo${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`secondLegFo${custIndex}`]}
+                              </p>
                             )}
-                            onChange={(selected) =>
-                              handleCustomerChange(index, selected)
-                            }
-                            placeholder="Select Customer"
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          Invoice
-                          <input
-                            className={styles.input}
-                            type="number"
-                            value={item.invoice}
-                            onChange={(e) =>
-                              handleInvoiceChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          CDN
-                          <input
-                            className={styles.input}
-                            type="text"
-                            value={item.cdn}
-                            onChange={(e) =>
-                              handleCdnChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          Quantity
-                          <input
-                            className={styles.input}
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleQuantityChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          Amount
-                          <input
-                            className={styles.input}
-                            type="number"
-                            value={item.amount}
-                            onChange={(e) =>
-                              handleAmountChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          PO Number
-                          <input
-                            className={styles.input}
-                            type="text"
-                            value={item.poNumber}
-                            onChange={(e) =>
-                              handlePoNumberChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                        >
-                          Seal Number
-                          <input
-                            className={styles.input}
-                            type="text"
-                            value={item.sealNumber}
-                            onChange={(e) =>
-                              handleSealNumberChange(index, e.target.value)
-                            }
-                          />
-                        </label>
-                        <label
-                          className={`${styles.label} ${styles["customer-invoice-label"]}`}
-                          htmlFor="destination"
-                        >
-                          Destination
-                          <input
-                            className={`${styles.input} ${
-                              errors.destination ? styles["error-input"] : ""
-                            }`}
-                            type="text"
-                            id="destination"
-                            name="destination"
-                            value={item.destination}
-                            onChange={(e) =>
-                              handleDestinationChange(index, e.target.value)
-                            }
-                          />
-                          {errors.destination && (
-                            <p className={styles["error-message"]}>
-                              {errors.destination}
-                            </p>
-                          )}
-                        </label>
-                        {dmrsData.category === "Transshipment" &&
-                          item.customerId &&
-                          String(item.customerId) !== "152" && (
-                            <label className={styles.label}>
-                              Second Leg FO Number
-                              <input
-                                className={styles.input}
-                                type="text"
-                                value={item.secondLegFo || ""}
-                                onChange={(e) =>
-                                  handleSecondLegFoChange(index, e.target.value)
+                          </label>
+                        )}
+                      {(customer.invoices ?? []).map((inv, invIndex) => (
+                        <div key={invIndex} className={styles["invoice-block"]}>
+                          {customer.invoices.length > 1 && (
+                            <div className={styles["remove-button-container"]}>
+                              <button
+                                type="button"
+                                className={styles["remove-button"]}
+                                onClick={() =>
+                                  removeInvoice(custIndex, invIndex)
                                 }
-                              />
-                            </label>
+                              >
+                                <img
+                                  className={styles["remove-button-icon"]}
+                                  src={crossIcon}
+                                  alt="Remove"
+                                />
+                              </button>
+                            </div>
                           )}
-                      </div>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="invoice"
+                          >
+                            Invoice
+                            <input
+                              className={`${styles.input} ${
+                                errors.invoice ? styles["error-input"] : ""
+                              }`}
+                              type="number"
+                              id="invoice"
+                              value={inv.invoice}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "invoice",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`invoice${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`invoice${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="cdn"
+                          >
+                            CDN
+                            <input
+                              className={`${styles.input} ${
+                                errors.cdn ? styles["error-input"] : ""
+                              }`}
+                              type="text"
+                              id="cdn"
+                              value={inv.cdn}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "cdn",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`cdn${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`cdn${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="quantity"
+                          >
+                            Quantity
+                            <input
+                              className={`${styles.input}  ${
+                                errors.quantity ? styles["error-input"] : ""
+                              }`}
+                              type="number"
+                              id="quantity"
+                              value={inv.quantity}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "quantity",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`quantity${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`quantity${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="amount"
+                          >
+                            Amount
+                            <input
+                              className={`${styles.input} ${
+                                errors.amount ? styles["error-input"] : ""
+                              }`}
+                              type="number"
+                              id="amount"
+                              value={inv.amount}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "amount",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`amount${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`amount${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="po_number"
+                          >
+                            PO Number
+                            <input
+                              className={`${styles.input} ${
+                                errors.poNumber ? styles["error-input"] : ""
+                              }`}
+                              type="text"
+                              id="po_number"
+                              value={inv.poNumber}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "poNumber",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`poNumber${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`poNumber${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="seal_number"
+                          >
+                            Seal Number
+                            <input
+                              className={`${styles.input} ${
+                                errors.sealNumber ? styles["error-input"] : ""
+                              }`}
+                              type="text"
+                              id="seal_number"
+                              value={inv.sealNumber}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "sealNumber",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`sealNumber${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`sealNumber${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="allowance_matrix_id"
+                          >
+                            Source and Destination
+                            <Select
+                              className={`${styles.input} ${
+                                errors.allowanceMatrixId
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              styles={{
+                                control: (base, state) => ({
+                                  ...base,
+                                  borderColor: state.isFocused
+                                    ? "var(--text-secondary)"
+                                    : "var(--borders)",
+                                  boxShadow: state.isFocused
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : state.isHovered
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : "none",
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: "var(--text-primary)",
+                                  "&:hover": {
+                                    borderColor: "var(--text-secondary)",
+                                    boxShadow:
+                                      "0 0 4px rgba(109, 118, 126, 0.8)",
+                                  },
+                                  transition: "all 0.3s ease-in-out",
+                                  cursor: "pointer",
+                                }),
+                                menu: (base) => ({
+                                  ...base,
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: "var(--text-primary)",
+                                  border: `1px solid var(--borders)`,
+                                }),
+                                option: (base, state) => ({
+                                  ...base,
+                                  backgroundColor: state.isSelected
+                                    ? isDarkMode
+                                      ? "#333333"
+                                      : "#e9ecef"
+                                    : state.isFocused
+                                    ? isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa"
+                                    : base.backgroundColor,
+                                  color: state.isSelected
+                                    ? "var(--text-primary)"
+                                    : base.color,
+                                  cursor: "pointer",
+                                  "&:hover": {
+                                    backgroundColor: isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa",
+                                  },
+                                }),
+                                singleValue: (base) => ({
+                                  ...base,
+                                  color: "var(--text-primary)",
+                                }),
+                                placeholder: (base) => ({
+                                  ...base,
+                                  color: "var(--text-secondary)",
+                                }),
+                                input: (base) => ({
+                                  ...base,
+                                  color: "var(--text-primary)",
+                                }),
+                              }}
+                              id="allowance_matrix_id"
+                              name="allowanceMatrixId"
+                              options={allowanceMatrixOptions}
+                              value={allowanceMatrixOptions.find(
+                                (opt) => opt.value === inv.allowanceMatrixId
+                              )}
+                              onChange={(selected) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "allowanceMatrixId",
+                                  selected?.value || null
+                                )
+                              }
+                              placeholder="Select Source and Destination"
+                            />
+                            {errors[`allowanceMatrixId${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`allowanceMatrixId${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="tsm_trucktype"
+                          >
+                            TSM Truck Type
+                            <Select
+                              className={`${styles.input} ${
+                                errors[`tsmTrucktype_${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              styles={{
+                                control: (base, state) => ({
+                                  ...base,
+                                  borderColor: state.isFocused
+                                    ? "var(--text-secondary)"
+                                    : "var(--borders)",
+                                  boxShadow: state.isFocused
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : state.isHovered
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : "none",
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                  "&:hover": {
+                                    borderColor: "var(--text-secondary)",
+                                    boxShadow:
+                                      "0 0 4px rgba(109, 118, 126, 0.8)",
+                                  },
+                                  transition: "all 0.3s ease-in-out",
+                                  cursor: "pointer",
+                                }),
+                                menu: (base) => ({
+                                  ...base,
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                  border: `1px solid ${
+                                    isDarkMode
+                                      ? "var(--borders)"
+                                      : "var(--borders)"
+                                  }`,
+                                }),
+                                option: (base, state) => ({
+                                  ...base,
+                                  backgroundColor: state.isSelected
+                                    ? isDarkMode
+                                      ? "#333333"
+                                      : "#e9ecef"
+                                    : state.isFocused
+                                    ? isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa"
+                                    : base.backgroundColor,
+                                  color: state.isSelected
+                                    ? isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)"
+                                    : base.color,
+                                  cursor: "pointer",
+                                  "&:hover": {
+                                    backgroundColor: isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa",
+                                  },
+                                }),
+                                singleValue: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                }),
+                                placeholder: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-secondary)"
+                                    : "var(--text-secondary)",
+                                }),
+                                input: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                }),
+                              }}
+                              id="tsm_trucktype"
+                              options={tsmTrucktypeOptions}
+                              value={tsmTrucktypeOptions.find(
+                                (opt) => opt.value === inv.tsmTrucktype
+                              )}
+                              onChange={(selected) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "tsmTrucktype",
+                                  selected?.value || ""
+                                )
+                              }
+                              placeholder="Select TSM Truck Type"
+                            />
+                            {errors[`tsmTrucktype_${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`tsmTrucktype_${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className={styles["add-customer-invoice"]}
+                        onClick={() => addInvoice(custIndex)}
+                      >
+                        Add Invoice
+                      </button>
                     </div>
                   </div>
                 ))}
                 <button
                   className={styles["add-customer-invoice"]}
                   type="button"
-                  onClick={addCustomerInvoice}
+                  onClick={addCustomer}
                 >
-                  Add More
+                  Add Customer
                 </button>
               </div>
-              <label className={styles.label} htmlFor="fo_number">
-                FO Number
-                <input
-                  className={`${styles.input} ${
-                    errors.foNumber ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="fo_number"
-                  name="foNumber"
-                  value={dmrsData.foNumber}
-                  onChange={handleInputChange}
-                />
-                {errors.foNumber && (
-                  <p className={styles["error-message"]}>{errors.foNumber}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="transaction_date">
-                Transaction Date
-                <input
-                  className={`${styles.input} ${
-                    errors.transactionDate ? styles["error-input"] : ""
-                  }`}
-                  type="date"
-                  id="transaction_date"
-                  name="transactionDate"
-                  value={dmrsData.transactionDate}
-                  onChange={handleInputChange}
-                />
-                {errors.transactionDate && (
-                  <p className={styles["error-message"]}>
-                    {errors.transactionDate}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="truck_gate_in">
-                Truck Gate In
-                <input
-                  className={`${styles.input} ${
-                    errors.truckGateIn ? styles["error-input"] : ""
-                  }`}
-                  type="datetime-local"
-                  id="truck_gate_in"
-                  name="truckGateIn"
-                  value={dmrsData.truckGateIn}
-                  onChange={handleInputChange}
-                />
-                {errors.truckGateIn && (
-                  <p className={styles["error-message"]}>
-                    {errors.truckGateIn}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="dispatch_date_and_time">
-                Dispatch Date and Time
-                <input
-                  className={`${styles.input} ${
-                    errors.dispatchDateAndTime ? styles["error-input"] : ""
-                  }`}
-                  type="datetime-local"
-                  id="dispatch_date_and_time"
-                  name="dispatchDateAndTime"
-                  value={dmrsData.dispatchDateAndTime}
-                  onChange={handleInputChange}
-                />
-                {errors.dispatchDateAndTime && (
-                  <p className={styles["error-message"]}>
-                    {errors.dispatchDateAndTime}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="rdd">
-                RDD
-                <input
-                  className={`${styles.input} ${
-                    errors.rdd ? styles["error-input"] : ""
-                  }`}
-                  type="date"
-                  id="rdd"
-                  name="rdd"
-                  value={dmrsData.rdd}
-                  onChange={handleInputChange}
-                />
-                {errors.rdd && (
-                  <p className={styles["error-message"]}>{errors.rdd}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="driver_id">
-                Driver
-                <Select
-                  className={`${styles.input} ${
-                    errors.driverId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="driver_id"
-                  name="driverId"
-                  options={driverOptions}
-                  value={
-                    driverOptions.find(
-                      (opt) => opt.value === dmrsData.driverId
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      driverId: selected?.value || "",
-                    }))
-                  }
-                  classNamePrefix="react-select"
-                  placeholder="Select Driver"
-                />
-                {errors.driverId && (
-                  <p className={styles["error-message"]}>{errors.driverId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="crew_id">
-                Crew Members
-                <Select
-                  className={`${styles.input} ${
-                    errors.crew_id ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  isMulti
-                  id="crew_id"
-                  name="crewId"
-                  options={crewOptions}
-                  value={crewOptions.filter((opt) =>
-                    dmrsData.crewId?.includes(opt.value)
-                  )}
-                  onChange={(selected) => {
-                    const values = selected
-                      ? selected.map((opt) => opt.value)
-                      : [];
-                    setDmrsData((prev) => ({ ...prev, crewId: values }));
-                  }}
-                  classNamePrefix="react-select"
-                  placeholder="Select Crew Members"
-                />
-                {errors.crewId && (
-                  <p className={styles["error-message"]}>{errors.crewId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="truck_id">
-                Truck (Plate Number)
-                <Select
-                  className={`${styles.input} ${
-                    errors.truckId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="truck_id"
-                  name="truckId"
-                  options={plateNumberOptions}
-                  value={
-                    plateNumberOptions.find(
-                      (opt) => opt.value === dmrsData.truckId
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      truckId: selected?.value || "",
-                    }))
-                  }
-                  classNamePrefix="react-select"
-                  placeholder="Select Truck"
-                />
-                {errors.truckId && (
-                  <p className={styles["error-message"]}>{errors.truckId}</p>
-                )}
-              </label>
               {errors.apiError && (
                 <p className={styles["error-message"]}>{errors.apiError}</p>
               )}
@@ -2680,7 +3187,9 @@ const OPSNPIDmr = () => {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
         >
-          <div className={styles["modal-container"]}>
+          <div
+            className={`${styles["modal-container"]} ${styles["edit-modal-container"]} ${styles["dmr-modal-container"]}`}
+          >
             <div className={styles["modal-header-container"]}>
               <h3 className={styles["modal-title"]}>Edit Dmr</h3>
               <button
@@ -2695,775 +3204,1196 @@ const OPSNPIDmr = () => {
               </button>
             </div>
             <form
-              className={styles["modal-body-container"]}
+              className={`${styles["modal-body-container"]} ${styles["modal-dmr-body-container"]}`}
               onSubmit={handleEditDmr}
             >
-              <label className={styles.label} htmlFor="category">
-                Category
-                <Select
-                  className={`${styles.input} ${
-                    errors.category ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "var(--text-primary)",
-                    }),
-                  }}
-                  id="category"
-                  name="category"
-                  options={categoryOptions}
-                  value={
-                    categoryOptions.find(
-                      (opt) => opt.value === dmrsData.category
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      category: selected?.value || "",
-                    }))
-                  }
-                  placeholder="Select Category"
-                />
-                {errors.category && (
-                  <p className={styles["error-message"]}>{errors.category}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="site_id">
-                Site
-                <Select
-                  className={`${styles.input} ${
-                    errors.siteId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
+              <div className={styles["dmr-body-container"]}>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="category"
+                >
+                  Category
+                  <Select
+                    className={`${styles.input} ${
+                      errors.category ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: "var(--text-primary)",
+                        border: `1px solid var(--borders)`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: "var(--text-primary)",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: "var(--text-primary)",
+                      }),
+                    }}
+                    id="category"
+                    name="category"
+                    options={categoryOptions}
+                    value={
+                      categoryOptions.find(
+                        (opt) => opt.value === dmrsData.category
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        category: selected?.value || "",
+                      }))
+                    }
+                    placeholder="Select Category"
+                  />
+                  {errors.category && (
+                    <p className={styles["error-message"]}>{errors.category}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="site_id"
+                >
+                  Site
+                  <Select
+                    className={`${styles.input} ${
+                      errors.siteId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
                           ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="site_id"
-                  name="siteId"
-                  options={siteOptions}
-                  value={
-                    siteOptions.find((opt) => opt.value === dmrsData.siteId) ||
-                    null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      siteId: selected?.value || "",
-                    }))
-                  }
-                  placeholder="Select Site"
-                />
-                {errors.siteId && (
-                  <p className={styles["error-message"]}>{errors.siteId}</p>
-                )}
-              </label>
-              <div className={styles["invoice-customer-container"]}>
-                {customersInvoices.map((item, index) => (
-                  <div key={index} className={styles["customer-invoice-row"]}>
-                    <label className={styles.label}>
-                      Customer
-                      <Select
-                        className={`${styles.input} ${
-                          errors[`customerId_${index}`]
-                            ? styles["error-input"]
-                            : ""
-                        }`}
-                        options={customerOptions}
-                        value={customerOptions.find(
-                          (opt) => opt.value === item.customerId
-                        )}
-                        onChange={(selected) =>
-                          handleCustomerChange(index, selected)
-                        }
-                        placeholder="Select Customer"
-                      />
-                      {errors[`customerId_${index}`] && (
-                        <p className={styles["error-message"]}>
-                          {errors[`customerId_${index}`]}
-                        </p>
-                      )}
-                    </label>
-                    <label className={styles.label}>
-                      Invoice
-                      <input
-                        className={`${styles.input} ${
-                          errors[`invoice_${index}`]
-                            ? styles["error-input"]
-                            : ""
-                        }`}
-                        type="number"
-                        value={item.invoice}
-                        onChange={(e) =>
-                          handleInvoiceChange(index, e.target.value)
-                        }
-                      />
-                      {errors[`invoice_${index}`] && (
-                        <p className={styles["error-message"]}>
-                          {errors[`invoice_${index}`]}
-                        </p>
-                      )}
-                    </label>
-                    {customersInvoices.length > 1 && (
-                      <button
-                        className={styles["remove-button"]}
-                        type="button"
-                        onClick={() => removeCustomerInvoice(index)}
-                      >
-                        <img
-                          className={styles["remove-button-icon"]}
-                          src={crossIcon}
-                          alt="Remove"
-                        />
-                      </button>
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="site_id"
+                    name="siteId"
+                    options={siteOptions}
+                    value={
+                      siteOptions.find(
+                        (opt) => opt.value === dmrsData.siteId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        siteId: selected?.value || "",
+                      }))
+                    }
+                    placeholder="Select Site"
+                  />
+                  {errors.siteId && (
+                    <p className={styles["error-message"]}>{errors.siteId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="fo_number"
+                >
+                  FO Number
+                  <input
+                    className={`${styles.input} ${
+                      errors.foNumber ? styles["error-input"] : ""
+                    }`}
+                    type="text"
+                    id="fo_number"
+                    name="foNumber"
+                    value={dmrsData.foNumber}
+                    onChange={handleInputChange}
+                  />
+                  {errors.foNumber && (
+                    <p className={styles["error-message"]}>{errors.foNumber}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="transaction_date"
+                >
+                  Transaction Date
+                  <input
+                    className={`${styles.input} ${
+                      errors.transactionDate ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="transaction_date"
+                    name="transactionDate"
+                    value={dmrsData.transactionDate}
+                    onChange={handleInputChange}
+                  />
+                  {errors.transactionDate && (
+                    <p className={styles["error-message"]}>
+                      {errors.transactionDate}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="truck_gate_in"
+                >
+                  Truck Gate In
+                  <input
+                    className={`${styles.input} ${
+                      errors.truckGateIn ? styles["error-input"] : ""
+                    }`}
+                    type="datetime-local"
+                    id="truck_gate_in"
+                    name="truckGateIn"
+                    value={dmrsData.truckGateIn}
+                    onChange={handleInputChange}
+                  />
+                  {errors.truckGateIn && (
+                    <p className={styles["error-message"]}>
+                      {errors.truckGateIn}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="dispatch_date_and_time"
+                >
+                  Dispatch Date and Time
+                  <input
+                    className={`${styles.input} ${
+                      errors.dispatchDateAndTime ? styles["error-input"] : ""
+                    }`}
+                    type="datetime-local"
+                    id="dispatch_date_and_time"
+                    name="dispatchDateAndTime"
+                    value={dmrsData.dispatchDateAndTime}
+                    onChange={handleInputChange}
+                  />
+                  {errors.dispatchDateAndTime && (
+                    <p className={styles["error-message"]}>
+                      {errors.dispatchDateAndTime}
+                    </p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="rdd"
+                >
+                  RDD
+                  <input
+                    className={`${styles.input} ${
+                      errors.rdd ? styles["error-input"] : ""
+                    }`}
+                    type="date"
+                    id="rdd"
+                    name="rdd"
+                    value={dmrsData.rdd}
+                    onChange={handleInputChange}
+                  />
+                  {errors.rdd && (
+                    <p className={styles["error-message"]}>{errors.rdd}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="driver_id"
+                >
+                  Driver
+                  <Select
+                    className={`${styles.input} ${
+                      errors.driverId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="driver_id"
+                    name="driverId"
+                    options={driverOptions}
+                    value={
+                      driverOptions.find(
+                        (opt) => opt.value === dmrsData.driverId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        driverId: selected?.value || "",
+                      }))
+                    }
+                    classNamePrefix="react-select"
+                    placeholder="Select Driver"
+                  />
+                  {errors.driverId && (
+                    <p className={styles["error-message"]}>{errors.driverId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="crew_id"
+                >
+                  Crew Members
+                  <Select
+                    className={`${styles.input} ${
+                      errors.crew_id ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    isMulti
+                    id="crew_id"
+                    name="crewId"
+                    options={crewOptions}
+                    value={crewOptions.filter((opt) =>
+                      dmrsData.crewId?.includes(opt.value)
                     )}
+                    onChange={(selected) => {
+                      const values = selected
+                        ? selected.map((opt) => opt.value)
+                        : [];
+                      setDmrsData((prev) => ({ ...prev, crewId: values }));
+                    }}
+                    classNamePrefix="react-select"
+                    placeholder="Select Crew Members"
+                  />
+                  {errors.crewId && (
+                    <p className={styles["error-message"]}>{errors.crewId}</p>
+                  )}
+                </label>
+                <label
+                  className={`${styles.label} ${styles["dmr-label"]}`}
+                  htmlFor="truck_id"
+                >
+                  Truck (Plate Number)
+                  <Select
+                    className={`${styles.input} ${
+                      errors.truckId ? styles["error-input"] : ""
+                    }`}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused
+                          ? "var(--text-secondary)"
+                          : "var(--borders)",
+                        boxShadow: state.isFocused
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : state.isHovered
+                          ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                          : "none",
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        "&:hover": {
+                          borderColor: "var(--text-secondary)",
+                          boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                        },
+                        transition: "all 0.3s ease-in-out",
+                        cursor: "pointer",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode
+                          ? "var(--cards)"
+                          : "var(--background)",
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                        border: `1px solid ${
+                          isDarkMode ? "var(--borders)" : "var(--borders)"
+                        }`,
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? isDarkMode
+                            ? "#333333"
+                            : "#e9ecef"
+                          : state.isFocused
+                          ? isDarkMode
+                            ? "#2a2a2a"
+                            : "#f8f9fa"
+                          : base.backgroundColor,
+                        color: state.isSelected
+                          ? isDarkMode
+                            ? "var(--text-primary)"
+                            : "var(--text-primary)"
+                          : base.color,
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                      placeholder: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-secondary)"
+                          : "var(--text-secondary)",
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)",
+                      }),
+                    }}
+                    id="truck_id"
+                    name="truckId"
+                    options={plateNumberOptions}
+                    value={
+                      plateNumberOptions.find(
+                        (opt) => opt.value === dmrsData.truckId
+                      ) || null
+                    }
+                    onChange={(selected) =>
+                      setDmrsData((prev) => ({
+                        ...prev,
+                        truckId: selected?.value || "",
+                      }))
+                    }
+                    classNamePrefix="react-select"
+                    placeholder="Select Truck"
+                  />
+                  {errors.truckId && (
+                    <p className={styles["error-message"]}>{errors.truckId}</p>
+                  )}
+                </label>
+              </div>
+              <div className={styles["invoice-customer-container"]}>
+                {(customers ?? []).map((customer, custIndex) => (
+                  <div key={custIndex} className={styles["customer-block"]}>
+                    <div className={styles["customer-invoice-input-container"]}>
+                      {customers.length > 1 && (
+                        <div className={styles["remove-button-container"]}>
+                          <button
+                            className={styles["remove-button"]}
+                            type="button"
+                            onClick={() => removeCustomer(custIndex)}
+                          >
+                            <img
+                              className={styles["remove-button-icon"]}
+                              src={crossIcon}
+                              alt="Remove"
+                            />
+                          </button>
+                        </div>
+                      )}
+                      <label
+                        className={`${styles.label} ${styles["customer-invoice-label"]}`}
+                        htmlFor="customer"
+                      >
+                        Customer
+                        <Select
+                          className={`${styles.input} ${
+                            errors[`customerId_${custIndex}`]
+                              ? styles["error-input"]
+                              : ""
+                          }`}
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: state.isFocused
+                                ? "var(--text-secondary)"
+                                : "var(--borders)",
+                              boxShadow: state.isFocused
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : state.isHovered
+                                ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                : "none",
+                              backgroundColor: isDarkMode
+                                ? "var(--cards)"
+                                : "var(--background)",
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                              "&:hover": {
+                                borderColor: "var(--text-secondary)",
+                                boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                              },
+                              transition: "all 0.3s ease-in-out",
+                              cursor: "pointer",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              backgroundColor: isDarkMode
+                                ? "var(--cards)"
+                                : "var(--background)",
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                              border: `1px solid ${
+                                isDarkMode ? "var(--borders)" : "var(--borders)"
+                              }`,
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? isDarkMode
+                                  ? "#333333"
+                                  : "#e9ecef"
+                                : state.isFocused
+                                ? isDarkMode
+                                  ? "#2a2a2a"
+                                  : "#f8f9fa"
+                                : base.backgroundColor,
+                              color: state.isSelected
+                                ? isDarkMode
+                                  ? "var(--text-primary)"
+                                  : "var(--text-primary)"
+                                : base.color,
+                              cursor: "pointer",
+                              "&:hover": {
+                                backgroundColor: isDarkMode
+                                  ? "#2a2a2a"
+                                  : "#f8f9fa",
+                              },
+                            }),
+                            singleValue: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                            }),
+                            placeholder: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-secondary)"
+                                : "var(--text-secondary)",
+                            }),
+                            input: (base) => ({
+                              ...base,
+                              color: isDarkMode
+                                ? "var(--text-primary)"
+                                : "var(--text-primary)",
+                            }),
+                          }}
+                          id="customer"
+                          options={customerOptions}
+                          placeholder="Select Customer"
+                          value={customerOptions.find(
+                            (opt) => opt.value === customer.customerId
+                          )}
+                          onChange={(selected) =>
+                            handleCustomerChange(custIndex, selected)
+                          }
+                        />
+                        {errors[`customerId_${custIndex}`] && (
+                          <p className={styles["error-message"]}>
+                            {errors[`customerId_${custIndex}`]}
+                          </p>
+                        )}
+                      </label>
+                      {dmrsData.category === "Transshipment" &&
+                        customer.customerId &&
+                        String(customer.customerId) !== "152" && (
+                          <label className={styles.label}>
+                            Second Leg FO Number
+                            <input
+                              className={styles.input}
+                              type="text"
+                              value={customer.secondLegFo || ""}
+                              onChange={(e) =>
+                                handleSecondLegFoChange(
+                                  custIndex,
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`secondLegFo${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`secondLegFo${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                        )}
+                      {(customer.invoices ?? []).map((inv, invIndex) => (
+                        <div key={invIndex} className={styles["invoice-block"]}>
+                          {customer.invoices.length > 1 && (
+                            <div className={styles["remove-button-container"]}>
+                              <button
+                                type="button"
+                                className={styles["remove-button"]}
+                                onClick={() =>
+                                  removeInvoice(custIndex, invIndex)
+                                }
+                              >
+                                <img
+                                  className={styles["remove-button-icon"]}
+                                  src={crossIcon}
+                                  alt="Remove"
+                                />
+                              </button>
+                            </div>
+                          )}
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="invoice"
+                          >
+                            Invoice
+                            <input
+                              className={`${styles.input} ${
+                                errors[`invoice${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="number"
+                              id="invoice"
+                              value={inv.invoice}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "invoice",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`invoice${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`invoice${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="cdn"
+                          >
+                            CDN
+                            <input
+                              className={`${styles.input} ${
+                                errors[`cdn${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="text"
+                              id="cdn"
+                              value={inv.cdn}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "cdn",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`cdn${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`cdn${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="quantity"
+                          >
+                            Quantity
+                            <input
+                              className={`${styles.input} ${
+                                errors[`quantity${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="number"
+                              id="quantity"
+                              value={inv.quantity}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "quantity",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`quantity${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`quantity${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="amount"
+                          >
+                            Amount
+                            <input
+                              className={`${styles.input} ${
+                                errors[`amount${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="number"
+                              id="amount"
+                              value={inv.amount}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "amount",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`amount${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`amount${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="po_number"
+                          >
+                            PO Number
+                            <input
+                              className={`${styles.input} ${
+                                errors[`poNumber${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="text"
+                              id="po_number"
+                              value={inv.poNumber}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "poNumber",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`poNumber${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`poNumber${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="seal_number"
+                          >
+                            Seal Number
+                            <input
+                              className={`${styles.input} ${
+                                errors[`sealNumber${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              type="text"
+                              id="seal_number"
+                              value={inv.sealNumber}
+                              onChange={(e) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "sealNumber",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            {errors[`sealNumber${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`sealNumber${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="allowance_matrix_id"
+                          >
+                            Source and Destination
+                            <Select
+                              className={`${styles.input} ${
+                                errors[`allowanceMatrixId${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              styles={{
+                                control: (base, state) => ({
+                                  ...base,
+                                  borderColor: state.isFocused
+                                    ? "var(--text-secondary)"
+                                    : "var(--borders)",
+                                  boxShadow: state.isFocused
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : state.isHovered
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : "none",
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: "var(--text-primary)",
+                                  "&:hover": {
+                                    borderColor: "var(--text-secondary)",
+                                    boxShadow:
+                                      "0 0 4px rgba(109, 118, 126, 0.8)",
+                                  },
+                                  transition: "all 0.3s ease-in-out",
+                                  cursor: "pointer",
+                                }),
+                                menu: (base) => ({
+                                  ...base,
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: "var(--text-primary)",
+                                  border: `1px solid var(--borders)`,
+                                }),
+                                option: (base, state) => ({
+                                  ...base,
+                                  backgroundColor: state.isSelected
+                                    ? isDarkMode
+                                      ? "#333333"
+                                      : "#e9ecef"
+                                    : state.isFocused
+                                    ? isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa"
+                                    : base.backgroundColor,
+                                  color: state.isSelected
+                                    ? "var(--text-primary)"
+                                    : base.color,
+                                  cursor: "pointer",
+                                  "&:hover": {
+                                    backgroundColor: isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa",
+                                  },
+                                }),
+                                singleValue: (base) => ({
+                                  ...base,
+                                  color: "var(--text-primary)",
+                                }),
+                                placeholder: (base) => ({
+                                  ...base,
+                                  color: "var(--text-secondary)",
+                                }),
+                                input: (base) => ({
+                                  ...base,
+                                  color: "var(--text-primary)",
+                                }),
+                              }}
+                              id="allowance_matrix_id"
+                              name="allowanceMatrixId"
+                              options={allowanceMatrixOptions}
+                              value={allowanceMatrixOptions.find(
+                                (opt) =>
+                                  String(opt.value) ===
+                                  String(inv.allowanceMatrixId)
+                              )}
+                              onChange={(selected) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "allowanceMatrixId",
+                                  selected?.value || null
+                                )
+                              }
+                              placeholder="Select Source and Destination"
+                            />
+                            {errors[`allowanceMatrixId${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`allowanceMatrixId${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                          <label
+                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                            htmlFor="tsm_trucktype"
+                          >
+                            TSM Truck Type
+                            <Select
+                              className={`${styles.input} ${
+                                errors[`tsmTrucktype_${custIndex}`]
+                                  ? styles["error-input"]
+                                  : ""
+                              }`}
+                              styles={{
+                                control: (base, state) => ({
+                                  ...base,
+                                  borderColor: state.isFocused
+                                    ? "var(--text-secondary)"
+                                    : "var(--borders)",
+                                  boxShadow: state.isFocused
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : state.isHovered
+                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                    : "none",
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                  "&:hover": {
+                                    borderColor: "var(--text-secondary)",
+                                    boxShadow:
+                                      "0 0 4px rgba(109, 118, 126, 0.8)",
+                                  },
+                                  transition: "all 0.3s ease-in-out",
+                                  cursor: "pointer",
+                                }),
+                                menu: (base) => ({
+                                  ...base,
+                                  backgroundColor: isDarkMode
+                                    ? "var(--cards)"
+                                    : "var(--background)",
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                  border: `1px solid ${
+                                    isDarkMode
+                                      ? "var(--borders)"
+                                      : "var(--borders)"
+                                  }`,
+                                }),
+                                option: (base, state) => ({
+                                  ...base,
+                                  backgroundColor: state.isSelected
+                                    ? isDarkMode
+                                      ? "#333333"
+                                      : "#e9ecef"
+                                    : state.isFocused
+                                    ? isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa"
+                                    : base.backgroundColor,
+                                  color: state.isSelected
+                                    ? isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)"
+                                    : base.color,
+                                  cursor: "pointer",
+                                  "&:hover": {
+                                    backgroundColor: isDarkMode
+                                      ? "#2a2a2a"
+                                      : "#f8f9fa",
+                                  },
+                                }),
+                                singleValue: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                }),
+                                placeholder: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-secondary)"
+                                    : "var(--text-secondary)",
+                                }),
+                                input: (base) => ({
+                                  ...base,
+                                  color: isDarkMode
+                                    ? "var(--text-primary)"
+                                    : "var(--text-primary)",
+                                }),
+                              }}
+                              id="tsm_trucktype"
+                              options={tsmTrucktypeOptions}
+                              value={tsmTrucktypeOptions.find(
+                                (opt) => opt.value === inv.tsmTrucktype
+                              )}
+                              onChange={(selected) =>
+                                handleInvoiceFieldChange(
+                                  custIndex,
+                                  invIndex,
+                                  "tsmTrucktype",
+                                  selected?.value || ""
+                                )
+                              }
+                              placeholder="Select TSM Truck Type"
+                            />
+                            {errors[`tsmTrucktype_${custIndex}`] && (
+                              <p className={styles["error-message"]}>
+                                {errors[`tsmTrucktype_${custIndex}`]}
+                              </p>
+                            )}
+                          </label>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className={styles["add-customer-invoice"]}
+                        onClick={() => addInvoice(custIndex)}
+                      >
+                        Add Invoice
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button
                   className={styles["add-customer-invoice"]}
                   type="button"
-                  onClick={addCustomerInvoice}
+                  onClick={addCustomer}
                 >
-                  Add More
+                  Add Customer
                 </button>
               </div>
-              <label className={styles.label} htmlFor="cdn">
-                CDN
-                <input
-                  className={`${styles.input} ${
-                    errors.cdn ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="cdn"
-                  name="cdn"
-                  value={dmrsData.cdn}
-                  onChange={handleInputChange}
-                />
-                {errors.cdn && (
-                  <p className={styles["error-message"]}>{errors.cdn}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="quantity">
-                Quantity
-                <input
-                  className={`${styles.input} ${
-                    errors.quantity ? styles["error-input"] : ""
-                  }`}
-                  type="number"
-                  id="quantity"
-                  name="quantity"
-                  value={dmrsData.quantity}
-                  onChange={handleInputChange}
-                />
-                {errors.quantity && (
-                  <p className={styles["error-message"]}>{errors.quantity}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="amount">
-                Amount
-                <input
-                  className={`${styles.input} ${
-                    errors.amount ? styles["error-input"] : ""
-                  }`}
-                  type="number"
-                  id="amount"
-                  name="amount"
-                  value={dmrsData.amount}
-                  onChange={handleInputChange}
-                />
-                {errors.amount && (
-                  <p className={styles["error-message"]}>{errors.amount}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="po_number">
-                PO Number
-                <input
-                  className={`${styles.input} ${
-                    errors.poNumber ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="po_number"
-                  name="poNumber"
-                  value={dmrsData.poNumber}
-                  onChange={handleInputChange}
-                />
-                {errors.poNumber && (
-                  <p className={styles["error-message"]}>{errors.poNumber}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="fo_number">
-                FO Number
-                <input
-                  className={`${styles.input} ${
-                    errors.foNumber ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="fo_number"
-                  name="foNumber"
-                  value={dmrsData.foNumber}
-                  onChange={handleInputChange}
-                />
-                {errors.foNumber && (
-                  <p className={styles["error-message"]}>{errors.foNumber}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="seal_number">
-                Seal Number
-                <input
-                  className={`${styles.input} ${
-                    errors.sealNumber ? styles["error-input"] : ""
-                  }`}
-                  type="number"
-                  id="seal_number"
-                  name="sealNumber"
-                  value={dmrsData.sealNumber}
-                  onChange={handleInputChange}
-                />
-                {errors.sealNumber && (
-                  <p className={styles["error-message"]}>{errors.sealNumber}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="transaction_date">
-                Transaction Date
-                <input
-                  className={`${styles.input} ${
-                    errors.transactionDate ? styles["error-input"] : ""
-                  }`}
-                  type="date"
-                  id="transaction_date"
-                  name="transactionDate"
-                  value={dmrsData.transactionDate}
-                  onChange={handleInputChange}
-                />
-                {errors.transactionDate && (
-                  <p className={styles["error-message"]}>
-                    {errors.transactionDate}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="truck_gate_in">
-                Truck Gate In
-                <input
-                  className={`${styles.input} ${
-                    errors.truckGateIn ? styles["error-input"] : ""
-                  }`}
-                  type="datetime-local"
-                  id="truck_gate_in"
-                  name="truckGateIn"
-                  value={dmrsData.truckGateIn}
-                  onChange={handleInputChange}
-                />
-                {errors.truckGateIn && (
-                  <p className={styles["error-message"]}>
-                    {errors.truckGateIn}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="dispatch_date_and_time">
-                Dispatch Date and Time
-                <input
-                  className={`${styles.input} ${
-                    errors.dispatchDateAndTime ? styles["error-input"] : ""
-                  }`}
-                  type="datetime-local"
-                  id="dispatch_date_and_time"
-                  name="dispatchDateAndTime"
-                  value={dmrsData.dispatchDateAndTime}
-                  onChange={handleInputChange}
-                />
-                {errors.dispatchDateAndTime && (
-                  <p className={styles["error-message"]}>
-                    {errors.dispatchDateAndTime}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="rdd">
-                RDD
-                <input
-                  className={`${styles.input} ${
-                    errors.rdd ? styles["error-input"] : ""
-                  }`}
-                  type="date"
-                  id="rdd"
-                  name="rdd"
-                  value={dmrsData.rdd}
-                  onChange={handleInputChange}
-                />
-                {errors.rdd && (
-                  <p className={styles["error-message"]}>{errors.rdd}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="driver_id">
-                Driver
-                <Select
-                  className={`${styles.input} ${
-                    errors.driverId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="driver_id"
-                  name="driverId"
-                  options={driverOptions}
-                  value={
-                    driverOptions.find(
-                      (opt) => opt.value === dmrsData.driverId
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      driverId: selected?.value || "",
-                    }))
-                  }
-                  classNamePrefix="react-select"
-                  placeholder="Select Driver"
-                />
-                {errors.driverId && (
-                  <p className={styles["error-message"]}>{errors.driverId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="crew_id">
-                Crew Members
-                <Select
-                  className={`${styles.input} ${
-                    errors.crew_id ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  isMulti
-                  id="crew_id"
-                  name="crewId"
-                  options={crewOptions}
-                  value={crewOptions.filter((opt) =>
-                    dmrsData.crewId?.includes(opt.value)
-                  )}
-                  onChange={(selected) => {
-                    const values = selected
-                      ? selected.map((opt) => opt.value)
-                      : [];
-                    setDmrsData((prev) => ({ ...prev, crewId: values }));
-                  }}
-                  classNamePrefix="react-select"
-                  placeholder="Select Crew Members"
-                />
-                {errors.crewId && (
-                  <p className={styles["error-message"]}>{errors.crewId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="truck_id">
-                Truck (Plate Number)
-                <Select
-                  className={`${styles.input} ${
-                    errors.truckId ? styles["error-input"] : ""
-                  }`}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      borderColor: state.isFocused
-                        ? "var(--text-secondary)"
-                        : "var(--borders)",
-                      boxShadow: state.isFocused
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : state.isHovered
-                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                        : "none",
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      "&:hover": {
-                        borderColor: "var(--text-secondary)",
-                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
-                      },
-                      transition: "all 0.3s ease-in-out",
-                      cursor: "pointer",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      backgroundColor: isDarkMode
-                        ? "var(--cards)"
-                        : "var(--background)",
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                      border: `1px solid ${
-                        isDarkMode ? "var(--borders)" : "var(--borders)"
-                      }`,
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? isDarkMode
-                          ? "#333333"
-                          : "#e9ecef"
-                        : state.isFocused
-                        ? isDarkMode
-                          ? "#2a2a2a"
-                          : "#f8f9fa"
-                        : base.backgroundColor,
-                      color: state.isSelected
-                        ? isDarkMode
-                          ? "var(--text-primary)"
-                          : "var(--text-primary)"
-                        : base.color,
-                      cursor: "pointer",
-                      "&:hover": {
-                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
-                      },
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-secondary)"
-                        : "var(--text-secondary)",
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: isDarkMode
-                        ? "var(--text-primary)"
-                        : "var(--text-primary)",
-                    }),
-                  }}
-                  id="truck_id"
-                  name="truckId"
-                  options={plateNumberOptions}
-                  value={
-                    plateNumberOptions.find(
-                      (opt) => opt.value === dmrsData.truckId
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    setDmrsData((prev) => ({
-                      ...prev,
-                      truckId: selected?.value || "",
-                    }))
-                  }
-                  classNamePrefix="react-select"
-                  placeholder="Select Truck"
-                />
-                {errors.truckId && (
-                  <p className={styles["error-message"]}>{errors.truckId}</p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="destination">
-                Destination
-                <input
-                  className={`${styles.input} ${
-                    errors.destination ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="destination"
-                  name="destination"
-                  value={dmrsData.destination}
-                  onChange={handleInputChange}
-                />
-                {errors.destination && (
-                  <p className={styles["error-message"]}>
-                    {errors.destination}
-                  </p>
-                )}
-              </label>
-              <label className={styles.label} htmlFor="second_leg_fo">
-                Second Leg FO Number
-                <input
-                  className={`${styles.input} ${
-                    errors.secondLegFo ? styles["error-input"] : ""
-                  }`}
-                  type="text"
-                  id="second_leg_fo"
-                  name="secondLegFo"
-                  value={dmrsData.secondLegFo}
-                  onChange={handleInputChange}
-                />
-                {errors.secondLegFo && (
-                  <p className={styles["error-message"]}>
-                    {errors.secondLegFo}
-                  </p>
-                )}
-              </label>
               {errors.apiError && (
                 <p className={styles["error-message"]}>{errors.apiError}</p>
               )}

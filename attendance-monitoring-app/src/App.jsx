@@ -22,7 +22,7 @@ import ArchivePayroll from "./pages/ArchivePayroll";
 import Profile from "./pages/Profile";
 import Site from "./pages/Site";
 import NPIDmr from "./pages/NPIDmr";
-import Lmr from "./pages/Lmr";
+import NPILmr from "./pages/NPILmr";
 import Etmr from "./pages/Etmr";
 import Allowance from "./pages/Allowance";
 import Holiday from "./pages/Holiday";
@@ -277,10 +277,10 @@ function App() {
         />
 
         <Route
-          path="/lmr"
+          path="/lmr/npi"
           element={
             <PrivateRoute allowedDepartments={["Operations"]}>
-              <Lmr />
+              <NPILmr />
             </PrivateRoute>
           }
         />

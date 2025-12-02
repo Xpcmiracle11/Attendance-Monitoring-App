@@ -175,6 +175,7 @@ const HRTrucks = () => {
 
   const tableColumn = [
     "ID",
+    "Plate Number",
     "Truck Brand",
     "Body Type",
     "Engine No.",
@@ -193,6 +194,7 @@ const HRTrucks = () => {
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
+      "Plate Number": item.plate_number || "",
       "Truck Brand": item.truck_brand || "",
       "Body Type": item.body_type || "",
       "Engine No.": item.engine_number || "",
@@ -230,6 +232,7 @@ const HRTrucks = () => {
 
     const tableRows = data.map((truck, index) => [
       index + 1,
+      truck.plate_number || "",
       truck.truck_brand || "",
       truck.body_type || "",
       truck.engine_number || "",
@@ -257,6 +260,7 @@ const HRTrucks = () => {
   const exportToWord = (data) => {
     const columnKeyMap = {
       ID: "id",
+      "Plate Number": "plate_number",
       "Truck Brand": "truck_brand",
       "Body Type": "body_type",
       "Engine No.": "engine_number",

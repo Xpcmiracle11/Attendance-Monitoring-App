@@ -4,8 +4,8 @@ import Modal from "../../Modal";
 import styles from "../../../assets/styles/OPSAllowance.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
-import deleteIcon from "../../../assets/images/delete-icon.svg";
 import editHoverIcon from "../../../assets/images/edit-hovered-icon.svg";
+import deleteIcon from "../../../assets/images/delete-icon.svg";
 import deleteHoverIcon from "../../../assets/images/delete-hovered-icon.svg";
 import filterIcon from "../../../assets/images/filter-icon.svg";
 import sortIcon from "../../../assets/images/sort-icon.svg";
@@ -20,7 +20,15 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  Table,
+  TableRow,
+  TableCell,
+  HeadingLevel,
+} from "docx";
 import Select from "react-select";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -161,7 +169,7 @@ const OPSAllowance = () => {
     "ID",
     "Week",
     "Principal",
-    "Waybill",
+    "Waybill / Trip Ticket",
     "Customer Name",
     "RDD",
     "Driver",
@@ -169,8 +177,8 @@ const OPSAllowance = () => {
     "Truck Plate",
     "Truck Type",
     "Trip Type",
-    "Source",
-    "Destination",
+    "Site",
+    "Source - Destination",
     "Date Allowance Requested",
     "Date Allowance Released",
     "Allowance",
@@ -192,16 +200,17 @@ const OPSAllowance = () => {
       ID: index + 1,
       Week: item.week,
       Principal: item.principal,
-      Waybill: item.waybill,
+      "Waybill / Trip Ticket":
+        item.trip_type === "ETMR" ? item.trip_ticket : item.waybill,
       "Customer Name": item.customer_name,
-      RDD: item.rdd,
+      RDD: formatDate(item.rdd),
       Driver: item.driver,
       Crews: item.crews,
       "Truck Plate": item.truck_plate,
       "Truck Type": item.truck_type,
       "Trip Type": item.trip_type,
-      Source: item.source,
-      Destination: item.destination,
+      Site: item.site_code,
+      "Source - Destination": `${item.source} - ${item.destination}`,
       "Date Allowance Requested": formatDate(item.date_allowance_requested),
       "Date Allowance Released": formatDate(item.date_allowance_released),
       Allowance: item.allowance,
@@ -210,7 +219,7 @@ const OPSAllowance = () => {
       "Stripper Loading": item.stripper_loading,
       "Stripper Unloading": item.stripper_unloading,
       "Crew Allowance": item.crew_allowance,
-      "Toll Fee": item.toll_fee,
+      Toll: item.toll_fee,
       "Transfer Fee": item.transfer_fee,
       "Pullout Incentive": item.pullout_incentive,
       "Transfer Incentive": item.transfer_incentive,
@@ -227,11 +236,12 @@ const OPSAllowance = () => {
       type: "array",
     });
 
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-    });
-
-    saveAs(blob, "allowances.xlsx");
+    saveAs(
+      new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      "allowances.xlsx"
+    );
   };
 
   const exportToPDF = (data) => {
@@ -240,32 +250,32 @@ const OPSAllowance = () => {
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.week || "",
-      item.principal || "",
-      item.waybill || "",
-      item.customer_name || "",
-      item.rdd || "",
-      item.driver || "",
-      item.crews || "",
-      item.truck_plate || "",
-      item.truck_type || "",
-      item.trip_type || "",
-      item.source || "",
-      item.destination || "",
+      item.week,
+      item.principal,
+      item.trip_type === "ETMR" ? item.trip_ticket : item.waybill,
+      item.customer_name,
+      formatDate(item.rdd),
+      item.driver,
+      item.crews,
+      item.truck_plate,
+      item.truck_type,
+      item.trip_type,
+      item.site_code,
+      `${item.source} - ${item.destination}`,
       formatDate(item.date_allowance_requested),
       formatDate(item.date_allowance_released),
-      item.allowance || "",
-      item.shipping || "",
-      item.fuel || "",
-      item.stripper_loading || "",
-      item.stripper_unloading || "",
-      item.crew_allowance || "",
-      item.toll_fee || "",
-      item.transfer_fee || "",
-      item.pullout_incentive || "",
-      item.transfer_incentive || "",
-      item.miscellaneous || "",
-      item.status || "",
+      item.allowance,
+      item.shipping,
+      item.fuel,
+      item.stripper_loading,
+      item.stripper_unloading,
+      item.crew_allowance,
+      item.toll_fee,
+      item.transfer_fee,
+      item.pullout_incentive,
+      item.transfer_incentive,
+      item.miscellaneous,
+      item.status,
     ]);
 
     autoTable(doc, {
@@ -278,69 +288,64 @@ const OPSAllowance = () => {
   };
 
   const exportToWord = (data) => {
-    const columnKeyMap = {
-      ID: null,
-      Week: "week",
-      Principal: "principal",
-      Waybill: "waybill",
-      Tripticket: "trip_ticket",
-      "Customer Name": "customer_name",
-      RDD: "rdd",
-      Driver: "driver",
-      Crews: "crews",
-      "Truck Plate": "truck_plate",
-      "Truck Type": "truck_type",
-      "Trip Type": "trip_type",
-      Source: "source",
-      Destination: "destination",
-      "Date Allowance Requested": "date_allowance_requested",
-      "Date Allowance Released": "date_allowance_released",
-      Allowance: "allowance",
-      Shipping: "shipping",
-      Fuel: "fuel",
-      "Stripper Loading": "stripper_loading",
-      "Stripper Unloading": "stripper_unloading",
-      "Crew Allowance": "crew_allowance",
-      "Toll Fee": "toll_fee",
-      "Transfer Fee": "transfer_fee",
-      "Pullout Incentive": "pullout_incentive",
-      "Transfer Incentive": "transfer_incentive",
-      Miscellaneous: "miscellaneous",
-      Status: "status",
-    };
+    const tableRows = data.map(
+      (item, index) =>
+        new TableRow({
+          children: tableColumn.map((col) => {
+            let value = "";
 
-    const tableRows = data.map((item, index) => {
-      return new TableRow({
-        children: tableColumn.map((column) => {
-          let value;
-          if (column === "ID") value = (index + 1).toString();
-          else {
-            const key = columnKeyMap[column];
-            if (
-              key === "date_allowance_requested" ||
-              key === "date_allowance_released"
-            ) {
-              value = formatDate(item[key]);
-            } else {
-              value =
-                item[key] !== undefined && item[key] !== null
-                  ? item[key].toString()
-                  : "";
+            switch (col) {
+              case "ID":
+                value = index + 1;
+                break;
+              case "Waybill / Trip Ticket":
+                value =
+                  item.trip_type === "ETMR" ? item.trip_ticket : item.waybill;
+                break;
+              case "RDD":
+                value = formatDate(item.rdd);
+                break;
+              case "Site":
+                value = item.site_code;
+                break;
+              case "Source - Destination":
+                value = `${item.source} - ${item.destination}`;
+                break;
+              case "Date Allowance Requested":
+                value = formatDate(item.date_allowance_requested);
+                break;
+              case "Date Allowance Released":
+                value = formatDate(item.date_allowance_released);
+                break;
+              case "Allowance":
+                value = item.allowance;
+                break;
+              case "Shipping":
+                value = item.shipping;
+                break;
+              case "Fuel":
+                value = item.fuel;
+                break;
+              default:
+                value =
+                  item[col.replace(/ /g, "_").toLowerCase()] ?? item[col] ?? "";
             }
-          }
-          return new TableCell({
-            children: [new Paragraph(value)],
-          });
-        }),
-      });
-    });
+
+            return new TableCell({
+              children: [new Paragraph(String(value ?? ""))],
+            });
+          }),
+        })
+    );
 
     const doc = new Document({
       sections: [
         {
-          properties: {},
           children: [
-            new Paragraph("Allowances Report"),
+            new Paragraph({
+              text: "Allowances Report",
+              heading: HeadingLevel.HEADING_1,
+            }),
             new Table({ rows: tableRows }),
           ],
         },
@@ -709,14 +714,6 @@ const OPSAllowance = () => {
         <h1 className={styles["page-title"]}>Allowance</h1>
       </div>
       <div className={styles["content-body-container"]}>
-        <div className={styles["add-allowance-button-container"]}>
-          <button
-            className={styles["add-allowance-button"]}
-            onClick={toggleAddModal}
-          >
-            Add Allowance
-          </button>
-        </div>
         <div className={styles["filter-container"]} ref={filterRef}>
           <input
             className={styles.search}
@@ -869,8 +866,8 @@ const OPSAllowance = () => {
                           id="a-z"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "code-asc"}
-                          onChange={() => setTempSortOrder("code-asc")}
+                          checked={tempSortOrder === "waybill-asc"}
+                          onChange={() => setTempSortOrder("waybill-asc")}
                         />
                         A-Z
                       </label>
@@ -880,8 +877,8 @@ const OPSAllowance = () => {
                           id="z-a"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "code-desc"}
-                          onChange={() => setTempSortOrder("code-desc")}
+                          checked={tempSortOrder === "waybill-desc"}
+                          onChange={() => setTempSortOrder("waybill-desc")}
                         />
                         Z-A
                       </label>
@@ -1090,8 +1087,8 @@ const OPSAllowance = () => {
                 <th className={styles.th}>Truck Plate</th>
                 <th className={styles.th}>Truck Type</th>
                 <th className={styles.th}>Trip Type</th>
-                <th className={styles.th}>Source</th>
-                <th className={styles.th}>Destination</th>
+                <th className={styles.th}>Site</th>
+                <th className={styles.th}>Source and Destination</th>
                 <th className={styles.th}>Date Allowance Requested</th>
                 <th className={styles.th}>Date Allowance Released</th>
                 <th className={styles.th}>Allowance</th>
@@ -1112,7 +1109,21 @@ const OPSAllowance = () => {
             <tbody className={styles.tbody}>
               {paginatedAllowances.map((item, index) => (
                 <tr className={styles.btr} key={index}>
-                  <td className={styles.td}>{item.week}</td>
+                  <td className={styles.td}>
+                    {" "}
+                    <span
+                      className={
+                        item.status === "Pending"
+                          ? styles["status-pin-pending"]
+                          : item.status === "Approved"
+                          ? styles["status-pin-approved"]
+                          : item.status === "Declined"
+                          ? styles["status-pin-declined"]
+                          : ""
+                      }
+                    ></span>
+                    {item.week}
+                  </td>
                   <td className={styles.td}>{item.principal}</td>
                   <td className={styles.td}>
                     {item.trip_type === "ETMR"
@@ -1126,8 +1137,10 @@ const OPSAllowance = () => {
                   <td className={styles.td}>{item.truck_plate}</td>
                   <td className={styles.td}>{item.truck_type}</td>
                   <td className={styles.td}>{item.trip_type}</td>
-                  <td className={styles.td}>{item.source}</td>
-                  <td className={styles.td}>{item.destination}</td>
+                  <td className={styles.td}>{item.site_code}</td>
+                  <td className={styles.td}>
+                    {item.source} - {item.destination}
+                  </td>
                   <td className={styles.td}>
                     {formatDate(item.date_allowance_requested)}
                   </td>

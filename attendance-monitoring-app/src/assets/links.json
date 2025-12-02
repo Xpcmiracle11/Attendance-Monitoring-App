@@ -122,9 +122,30 @@
   },
   {
     "name": "LMR",
-    "path": "/lmr",
     "icon": "lmr",
-    "active": "activeLmr"
+    "active": "activeLmr",
+    "children": [
+      {
+        "name": "NPI",
+        "path": "/lmr/npi"
+      },
+      {
+        "name": "UL",
+        "path": "/lmr/ul"
+      },
+      {
+        "name": "PANA",
+        "path": "/lmr/pana"
+      },
+      {
+        "name": "TDI",
+        "path": "/lmr/tdi"
+      },
+      {
+        "name": "AP",
+        "path": "/lmr/ap"
+      }
+    ]
   },
   {
     "name": "ETMR",

@@ -363,6 +363,68 @@ const Sidebar = ({ isSidebarOpen }) => {
                   </li>
                 );
               }
+              if (link.name === "LMR" && link.children?.length > 0) {
+                const isMenuOpen = openMenu === "LMR" || isChildActive;
+
+                return (
+                  <li
+                    key={index}
+                    className={`${styles["navigation-option-dropdown"]} ${
+                      isChildActive ? styles.active : ""
+                    }`}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <div
+                      className={`${styles["navigation-link"]} ${
+                        isChildActive ? styles.active : ""
+                      }`}
+                      onClick={() => toggleMenu("LMR")}
+                    >
+                      <img
+                        className={`${styles["navigation-icon"]} ${iconClass}`}
+                        src={iconSrc}
+                        alt={link.name}
+                      />
+                      {link.name}
+                      <span
+                        className={`${styles.arrow} ${
+                          isMenuOpen
+                            ? styles["open-menu"]
+                            : styles["closed-menu"]
+                        }`}
+                      >
+                        &gt;
+                      </span>
+                    </div>
+                    {isMenuOpen && (
+                      <ul className={styles["submenu"]}>
+                        {link.children.map((child, childIndex) => {
+                          const isChildItemActive =
+                            location.pathname === child.path;
+                          return (
+                            <li
+                              key={childIndex}
+                              className={`${styles["submenu-item"]} ${
+                                isChildItemActive ? styles.active : ""
+                              }`}
+                            >
+                              <Link
+                                to={child.path}
+                                className={`${
+                                  styles["navigation-link-dropdown"]
+                                } ${isChildItemActive ? styles.active : ""}`}
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
               if (link.name === "Attendance" && link.children?.length > 0) {
                 const isMenuOpen = openMenu === "Attendance" || isChildActive;
                 return (

@@ -535,6 +535,8 @@
 .modal-container {
   width: 90%;
   height: fit-content;
+  max-height: 600px;
+  overflow-y: auto;
   margin-top: 4rem;
   background-color: var(--cards);
   border: 1px solid var(--borders);
