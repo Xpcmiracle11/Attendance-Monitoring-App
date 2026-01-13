@@ -160,6 +160,12 @@
     "active": "activeAllowance"
   },
   {
+    "name": "Fuel",
+    "path": "/fuel",
+    "icon": "fuel",
+    "active": "activeFuel"
+  },
+  {
     "name": "Holiday",
     "path": "/holiday",
     "icon": "holiday",

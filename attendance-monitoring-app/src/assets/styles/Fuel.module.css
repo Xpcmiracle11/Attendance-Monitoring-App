@@ -1,0 +1,10 @@
+.fuel {
+  width: 100%;
+}
+.fuel-container {
+  width: 100%;
+  display: flex;
+}
+.sidebar-container {
+  width: fit-content;
+}

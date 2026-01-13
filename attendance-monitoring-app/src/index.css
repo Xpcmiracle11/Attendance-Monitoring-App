@@ -8,9 +8,17 @@
   --borders: #dddddd;
   --text-primary: #212529;
   --text-secondary: #6c757d;
-  --text-tertiary: #ffff
+  --text-tertiary: #ffff;
   --font-primary: "Montserrat", sans-serif;
   --font-secondary: "Poppins", sans-serif;
+
+  --status-pending: #ffc107; /* Amber */
+  --status-reviewed: #17a2b8; /* Teal */
+  --status-requested: #6f42c1; /* Purple */
+  --status-approved: #28a745; /* Green */
+  --status-declined: #dc3545; /* Red */
+  --status-completed: #20c997; /* Mint */
+  --status-verified: #a0522d; /* Blue */
 }
 [data-theme="dark"] {
   --primary-blue: #007bff;

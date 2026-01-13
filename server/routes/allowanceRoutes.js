@@ -1,15 +1,17 @@
 const express = require("express");
 const {
   getAllowances,
-  //   insertMatrix,
-  //   updateMatrix,
-  //   deleteMatrix,
+  updateAllowance,
+  checkAllowance,
+  approveAllowance,
+  declineAllowance,
 } = require("../controllers/allowanceController");
 
 const router = express.Router();
 
 router.get("/allowances", getAllowances);
-// router.post("/insert-matrix", insertMatrix);
-// router.put("/update-matrix/:id", updateMatrix);
-// router.delete("/delete-matrix/:id", deleteMatrix);
+router.put("/update-allowance/:waybill", updateAllowance);
+router.post("/check-allowances/:waybill", checkAllowance);
+router.post("/approve-allowances/:waybill", approveAllowance);
+router.post("/decline-allowances/:waybill", declineAllowance);
 module.exports = router;

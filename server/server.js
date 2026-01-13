@@ -28,6 +28,7 @@ const siteRoutes = require("./routes/siteRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const matrixRoutes = require("./routes/matrixRoutes");
 const allowanceRoutes = require("./routes/allowanceRoutes");
+const fuelRoutes = require("./routes/fuelRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -85,6 +86,7 @@ app.use("/api/", employeeRoutes);
 app.use("/api/", customerRoutes);
 app.use("/api/", matrixRoutes);
 app.use("/api/", allowanceRoutes);
+app.use("/api/", fuelRoutes);
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });

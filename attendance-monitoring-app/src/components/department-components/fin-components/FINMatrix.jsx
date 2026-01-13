@@ -57,7 +57,9 @@ const FINMatrix = () => {
     code: "",
     tripType: "",
     source: "",
-    destination: "",
+    firstDestination: "",
+    secondDestination: "",
+    shippingLine: "",
     truckType: "",
     daysForMeals: "",
     fuel: "",
@@ -69,12 +71,15 @@ const FINMatrix = () => {
     code: "",
     tripType: "",
     source: "",
-    destination: "",
+    firstDestination: "",
+    secondDestination: "",
+    shippingLine: "",
     truckType: "",
     daysForMeals: "",
     fuel: "",
     allowance: "",
     shipping: "",
+    apiError: "",
   });
 
   const isDarkMode =
@@ -163,7 +168,9 @@ const FINMatrix = () => {
     "Code",
     "Trip Type",
     "Source",
-    "Destination",
+    "First Destination",
+    "Second Destination",
+    "Shipping Line",
     "Truck Type",
     "Number of Days for Meals",
     "Fuel",
@@ -178,7 +185,9 @@ const FINMatrix = () => {
       Code: item.code,
       "Trip Type": item.trip_type,
       Source: item.source,
-      Destination: item.destination,
+      "First Destination": item.first_destination,
+      "Second Destination": item.second_destination,
+      "Shipping Line": item.shipping_line,
       "Truck Type": item.truck_type,
       "Number of Days for Meals": item.days_for_meals,
       Fuel: item.fuel,
@@ -212,7 +221,9 @@ const FINMatrix = () => {
       item.code || "",
       item.trip_type || "",
       item.source || "",
-      item.destination || "",
+      item.first_destination || "",
+      item.second_destination || "",
+      item.shipping_line || "",
       item.truck_type || "",
       item.days_for_meals || "",
       item.fuel || "",
@@ -236,7 +247,9 @@ const FINMatrix = () => {
       Code: "code",
       "Trip Type": "trip_type",
       Source: "source",
-      Destination: "destination",
+      "First Destination": "first_destination",
+      "Second Destination": "second_destination",
+      "Shipping Line": "shipping_line",
       "Truck Type": "truck_type",
       "Number of Days for Meals": "days_for_meals",
       Fuel: "fuel",
@@ -329,7 +342,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -346,7 +361,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -358,7 +375,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -402,7 +421,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -431,7 +452,9 @@ const FINMatrix = () => {
         code: matrixesData.code,
         trip_type: matrixesData.tripType,
         source: matrixesData.source,
-        destination: matrixesData.destination,
+        first_destination: matrixesData.firstDestination,
+        second_destination: matrixesData.secondDestination,
+        shipping_line: matrixesData.shippingLine,
         truck_type: matrixesData.truckType,
         days_for_meals: matrixesData.daysForMeals,
         fuel: matrixesData.fuel,
@@ -470,7 +493,9 @@ const FINMatrix = () => {
       code: matrix?.code || "",
       tripType: matrix?.trip_type || "",
       source: matrix?.source || "",
-      destination: matrix?.destination || "",
+      firstDestination: matrix?.first_destination || "",
+      secondDestination: matrix?.second_destination || "",
+      shippingLine: matrix?.shipping_line || "",
       truckType: matrix?.truck_type || "",
       daysForMeals: matrix?.days_for_meals || "",
       fuel: matrix?.fuel || "",
@@ -483,7 +508,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -501,7 +528,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -513,7 +542,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -530,7 +561,9 @@ const FINMatrix = () => {
       code: "",
       tripType: "",
       source: "",
-      destination: "",
+      firstDestination: "",
+      secondDestination: "",
+      shippingLine: "",
       truckType: "",
       daysForMeals: "",
       fuel: "",
@@ -566,7 +599,9 @@ const FINMatrix = () => {
           code: matrixesData.code,
           trip_type: matrixesData.tripType,
           source: matrixesData.source,
-          destination: matrixesData.destination,
+          first_destination: matrixesData.firstDestination,
+          second_destination: matrixesData.secondDestination,
+          shipping_line: matrixesData.shippingLine,
           truck_type: matrixesData.truckType,
           days_for_meals: matrixesData.daysForMeals,
           fuel: matrixesData.fuel,
@@ -1084,7 +1119,9 @@ const FINMatrix = () => {
                 <th className={styles.th}>Principal</th>
                 <th className={styles.th}>Trip Type</th>
                 <th className={styles.th}>Source</th>
-                <th className={styles.th}>Destination</th>
+                <th className={styles.th}>1st Destination</th>
+                <th className={styles.th}>2nd Destination</th>
+                <th className={styles.th}>Shipping Line</th>
                 <th className={styles.th}>Truck Type</th>
                 <th className={styles.th}>Number of Days for Meals</th>
                 <th className={styles.th}>Fuel</th>
@@ -1100,7 +1137,9 @@ const FINMatrix = () => {
                   <td className={styles.td}>{matrix.principal}</td>
                   <td className={styles.td}>{matrix.trip_type}</td>
                   <td className={styles.td}>{matrix.source}</td>
-                  <td className={styles.td}>{matrix.destination}</td>
+                  <td className={styles.td}>{matrix.first_destination}</td>
+                  <td className={styles.td}>{matrix.second_destination}</td>
+                  <td className={styles.td}>{matrix.shipping_line}</td>
                   <td className={styles.td}>{matrix.truck_type}</td>
                   <td className={styles.td}>{matrix.days_for_meals}</td>
                   <td className={styles.td}>{matrix.fuel}</td>
@@ -1469,21 +1508,57 @@ const FINMatrix = () => {
                   <p className={styles["error-message"]}>{errors.source}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="destination">
-                Destination
+              <label className={styles.label} htmlFor="first_destination">
+                First Destination
                 <input
                   className={`${styles.input} ${
-                    errors.destination ? styles["error-input"] : ""
+                    errors.firstDestination ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="destination"
-                  name="destination"
-                  value={matrixesData.destination}
+                  id="first_destination"
+                  name="firstDestination"
+                  value={matrixesData.firstDestination}
                   onChange={handleInputChange}
                 />
-                {errors.destination && (
+                {errors.firstDestination && (
                   <p className={styles["error-message"]}>
-                    {errors.destination}
+                    {errors.firstDestination}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="second_destination">
+                Second Destination
+                <input
+                  className={`${styles.input} ${
+                    errors.secondDestination ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="second_destination"
+                  name="secondDestination"
+                  value={matrixesData.secondDestination}
+                  onChange={handleInputChange}
+                />
+                {errors.secondDestination && (
+                  <p className={styles["error-message"]}>
+                    {errors.secondDestination}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="shipping_line">
+                Shipping Line
+                <input
+                  className={`${styles.input} ${
+                    errors.shippingLine ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="shipping_line"
+                  name="shippingLine"
+                  value={matrixesData.shippingLine}
+                  onChange={handleInputChange}
+                />
+                {errors.shippingLine && (
+                  <p className={styles["error-message"]}>
+                    {errors.shippingLine}
                   </p>
                 )}
               </label>
@@ -1875,21 +1950,57 @@ const FINMatrix = () => {
                   <p className={styles["error-message"]}>{errors.source}</p>
                 )}
               </label>
-              <label className={styles.label} htmlFor="destination">
-                Destination
+              <label className={styles.label} htmlFor="first_destination">
+                First Destination
                 <input
                   className={`${styles.input} ${
-                    errors.destination ? styles["error-input"] : ""
+                    errors.firstDestination ? styles["error-input"] : ""
                   }`}
                   type="text"
-                  id="destination"
-                  name="destination"
-                  value={matrixesData.destination}
+                  id="first_destination"
+                  name="firstDestination"
+                  value={matrixesData.firstDestination}
                   onChange={handleInputChange}
                 />
-                {errors.destination && (
+                {errors.firstDestination && (
                   <p className={styles["error-message"]}>
-                    {errors.destination}
+                    {errors.firstDestination}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="second_destination">
+                Second Destination
+                <input
+                  className={`${styles.input} ${
+                    errors.secondDestination ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="second_destination"
+                  name="secondDestination"
+                  value={matrixesData.secondDestination}
+                  onChange={handleInputChange}
+                />
+                {errors.secondDestination && (
+                  <p className={styles["error-message"]}>
+                    {errors.secondDestination}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="shipping_line">
+                Shipping Line
+                <input
+                  className={`${styles.input} ${
+                    errors.shippingLine ? styles["error-input"] : ""
+                  }`}
+                  type="text"
+                  id="shipping_line"
+                  name="shippingLine"
+                  value={matrixesData.shippingLine}
+                  onChange={handleInputChange}
+                />
+                {errors.shippingLine && (
+                  <p className={styles["error-message"]}>
+                    {errors.shippingLine}
                   </p>
                 )}
               </label>

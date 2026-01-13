@@ -23,10 +23,13 @@ import Profile from "./pages/Profile";
 import Site from "./pages/Site";
 import NPIDmr from "./pages/NPIDmr";
 import NPILmr from "./pages/NPILmr";
-import Etmr from "./pages/Etmr";
+import ULDmr from "./pages/ULDmr";
+import PANADmr from "./pages/PANADmr";
+import TDIDmr from "./pages/TDIDmr";
 import Allowance from "./pages/Allowance";
 import Holiday from "./pages/Holiday";
 import Matrix from "./pages/Matrix";
+import Fuel from "./pages/Fuel";
 import EmployeeProfile from "./pages/EmployeeProfile";
 import Customer from "./pages/Customer";
 import Loading from "./components/Loading";
@@ -259,6 +262,15 @@ function App() {
         />
 
         <Route
+          path="/fuel"
+          element={
+            <PrivateRoute allowedDepartments={["Finance"]}>
+              <Fuel />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
           path="/site"
           element={
             <PrivateRoute allowedDepartments={["Operations"]}>
@@ -286,10 +298,28 @@ function App() {
         />
 
         <Route
-          path="/etmr"
+          path="/dmr/ul"
           element={
             <PrivateRoute allowedDepartments={["Operations"]}>
-              <Etmr />
+              <ULDmr />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dmr/pana"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <PANADmr />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dmr/tdi"
+          element={
+            <PrivateRoute allowedDepartments={["Operations"]}>
+              <TDIDmr />
             </PrivateRoute>
           }
         />

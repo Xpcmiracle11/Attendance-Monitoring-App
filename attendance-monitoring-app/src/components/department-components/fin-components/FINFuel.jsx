@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Modal from "../../Modal";
-import styles from "../../../assets/styles/OPSAllowance.module.css";
+import styles from "../../../assets/styles/FINFuel.module.css";
 import crossIcon from "../../../assets/images/cross-icon.svg";
 import editIcon from "../../../assets/images/edit-icon.svg";
+import deleteIcon from "../../../assets/images/delete-icon.svg";
 import editHoverIcon from "../../../assets/images/edit-hovered-icon.svg";
-import checkIcon from "../../../assets/images/check-icon.svg";
-import checkHoverIcon from "../../../assets/images/check-hovered-icon.svg";
+import deleteHoverIcon from "../../../assets/images/delete-hovered-icon.svg";
 import filterIcon from "../../../assets/images/filter-icon.svg";
 import sortIcon from "../../../assets/images/sort-icon.svg";
 import exportIcon from "../../../assets/images/export-icon.svg";
@@ -20,34 +20,27 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  Table,
-  TableRow,
-  TableCell,
-  HeadingLevel,
-} from "docx";
+import { Document, Packer, Paragraph, Table, TableRow, TableCell } from "docx";
 import Select from "react-select";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const OPSAllowance = () => {
-  const [allowances, setAllowances] = useState([]);
+const FINFuel = () => {
+  const [fuels, setFuels] = useState([]);
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 5;
   const [tempFromDate, setTempFromDate] = useState("");
   const [tempToDate, setTempToDate] = useState("");
   const [sortOrder, setSortOrder] = useState("");
   const [tempSortOrder, setTempSortOrder] = useState("");
   const [appliedFromDate, setAppliedFromDate] = useState("");
   const [appliedToDate, setAppliedToDate] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isCheckModalOpen, setIsCheckModalOpen] = useState(false);
-  const [selectedAllowance, setSelectedAllowance] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedFuel, setSelectedFuel] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState("");
@@ -58,57 +51,47 @@ const OPSAllowance = () => {
   const sortRef = useRef(null);
   const exportRef = useRef(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
-  const [isCheckHovered, setIsCheckHovered] = useState(null);
-  const [allowancesData, setAllowancesData] = useState({
-    stripperLoading: "",
-    stripperUnloading: "",
-    crewAllowance: "",
-    tollFee: "",
-    transferFee: "",
-    pullOutIncentive: "",
-    transferIncentive: "",
-    miscellaneous: "",
+  const [isDeleteHovered, setIsDeleteHovered] = useState(null);
+  const [fuelsData, setFuelsData] = useState({
+    siteId: "",
+    pricePerLiter: "",
+    effectiveDate: "",
   });
   const [errors, setErrors] = useState({
-    stripperLoading: "",
-    stripperUnloading: "",
-    crewAllowance: "",
-    tollFee: "",
-    transferFee: "",
-    pullOutIncentive: "",
-    transferIncentive: "",
-    miscellaneous: "",
+    siteId: "",
+    pricePerLiter: "",
+    effectiveDate: "",
     apiError: "",
   });
 
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
 
-  const fetchAllowances = async () => {
+  const fetchFuels = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/allowances`);
+      const response = await axios.get(`${API_BASE_URL}/fuels`);
       if (response.data.success) {
-        setAllowances(response.data.data);
+        setFuels(response.data.data);
       }
     } catch (error) {
-      console.error("Error fetching allowance:", error);
+      console.error("Error fetching fuel:", error);
     }
   };
   useEffect(() => {
-    fetchAllowances();
+    fetchFuels();
   }, []);
 
-  const filteredAllowances = allowances
-    .filter((allowance) => {
-      const waybill = (allowance.waybill || "").toLowerCase();
-      const matchesSearch = waybill.includes(search.toLowerCase());
+  const filteredFuels = fuels
+    .filter((fuel) => {
+      const code = (fuel.code || "").toLowerCase();
+      const matchesSearch = code.includes(search.toLowerCase());
 
-      const allowanceDate = allowance.created_at
-        ? new Date(allowance.created_at.split("T")[0])
+      const fuelDate = fuel.created_at
+        ? new Date(fuel.created_at.split("T")[0])
         : new Date();
       const iswithinDateRange =
-        (!appliedFromDate || allowanceDate >= new Date(appliedFromDate)) &&
-        (!appliedToDate || allowanceDate <= new Date(appliedToDate));
+        (!appliedFromDate || fuelDate >= new Date(appliedFromDate)) &&
+        (!appliedToDate || fuelDate <= new Date(appliedToDate));
 
       return matchesSearch && iswithinDateRange;
     })
@@ -117,15 +100,13 @@ const OPSAllowance = () => {
         return new Date(a.created_at) - new Date(b.created_at);
       if (sortOrder === "date-desc")
         return new Date(b.created_at) - new Date(a.created_at);
-      if (sortOrder === "waybill-asc")
-        return a.waybill.localeCompare(b.waybill);
-      if (sortOrder === "waybill-desc")
-        return b.waybill.localeCompare(a.waybill);
+      if (sortOrder === "code-asc") return a.code.localeCompare(b.code);
+      if (sortOrder === "code-desc") return b.code.localeCompare(a.code);
       return 0;
     });
 
-  const totalPages = Math.ceil(filteredAllowances.length / itemsPerPage);
-  const paginatedAllowances = filteredAllowances.slice(
+  const totalPages = Math.ceil(filteredFuels.length / itemsPerPage);
+  const paginatedFuels = filteredFuels.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -163,128 +144,41 @@ const OPSAllowance = () => {
     return date.toLocaleDateString("en-US", options);
   };
 
-  const formatMoney = (value) => {
-    if (value === null || value === undefined) return "₱0.00";
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
-
-  const tableColumn = [
-    "ID",
-    "Week",
-    "Principal",
-    "Waybill / Trip Ticket",
-    "Customer Name",
-    "RDD",
-    "Driver",
-    "Crews",
-    "Truck Plate",
-    "Truck Type",
-    "Trip Type",
-    "Site",
-    "Source - Destination",
-    "Date Allowance Requested",
-    "Date Allowance Released",
-    "Allowance",
-    "Shipping",
-    "Fuel",
-    "Stripper Loading",
-    "Stripper Unloading",
-    "Crew Allowance",
-    "Toll Fee",
-    "Transfer Fee",
-    "Pullout Incentive",
-    "Transfer Incentive",
-    "Miscellaneous",
-    "Status",
-  ];
+  const tableColumn = ["ID", "Site Name", "Price Per Liter", "Effecitve Date"];
 
   const exportToExcel = (data) => {
     const formattedData = data.map((item, index) => ({
       ID: index + 1,
-      Week: item.week,
-      Principal: item.principal,
-      "Waybill / Trip Ticket":
-        item.trip_type === "ETMR" ? item.trip_ticket : item.waybill,
-      "Customer Name": item.customer_name,
-      RDD: formatDate(item.rdd),
-      Driver: item.driver,
-      Crews: item.crews,
-      "Truck Plate": item.truck_plate,
-      "Truck Type": item.truck_type,
-      "Trip Type": item.trip_type,
-      Site: item.site_code,
-      "Source - Destination": `${item.source} - ${item.first_destination} - ${item.second_destination}`,
-      "Date Allowance Requested": formatDate(item.date_allowance_requested),
-      "Date Allowance Released": formatDate(item.date_allowance_released),
-      Allowance: item.allowance,
-      Shipping: item.shipping,
-      Fuel: item.fuel_amount,
-      "Stripper Loading": item.stripper_loading,
-      "Stripper Unloading": item.stripper_unloading,
-      "Crew Allowance": item.crew_allowance,
-      Toll: item.toll_fee,
-      "Transfer Fee": item.transfer_fee,
-      "Pullout Incentive": item.pullout_incentive,
-      "Transfer Incentive": item.transfer_incentive,
-      Miscellaneous: item.miscellaneous,
-      Total: item.total_amount,
-      Status: item.status,
+      "Site Name": item.site_name,
+      "Price Per Liter": item.price_per_liter,
+      "Effective Date": formatDate(item.effectiveDate),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Allowances");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Fuels");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
 
-    saveAs(
-      new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }),
-      "allowances.xlsx"
-    );
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+    });
+
+    saveAs(blob, "fuels.xlsx");
   };
 
   const exportToPDF = (data) => {
     const doc = new jsPDF();
-    doc.text("Allowances Report", 14, 10);
+    doc.text("Fuels Report", 14, 10);
 
     const tableRows = data.map((item, index) => [
       index + 1,
-      item.week,
-      item.principal,
-      item.trip_type === "ETMR" ? item.trip_ticket : item.waybill,
-      item.customer_name,
-      formatDate(item.rdd),
-      item.driver,
-      item.crews,
-      item.truck_plate,
-      item.truck_type,
-      item.trip_type,
-      item.site_code,
-      `${item.source} - ${item.first_destination} - ${item.second_destination}`,
-      formatDate(item.date_allowance_requested),
-      formatDate(item.date_allowance_released),
-      item.allowance,
-      item.shipping,
-      item.fuel_amount,
-      item.stripper_loading,
-      item.stripper_unloading,
-      item.crew_allowance,
-      item.toll_fee,
-      item.transfer_fee,
-      item.pullout_incentive,
-      item.transfer_incentive,
-      item.miscellaneous,
-      item.total_amount,
-      item.status,
+      item.site_name || "",
+      item.price_per_liter || "",
+      formatDate(item.price_per_liter) || "",
     ]);
 
     autoTable(doc, {
@@ -293,79 +187,69 @@ const OPSAllowance = () => {
       startY: 20,
     });
 
-    doc.save("allowances.pdf");
+    doc.save("fuels.pdf");
   };
 
   const exportToWord = (data) => {
-    const tableRows = data.map(
-      (item, index) =>
-        new TableRow({
-          children: tableColumn.map((col) => {
-            let value = "";
+    const columnKeyMap = {
+      ID: null,
+      "Site Name": "site_name",
+      "Price Per Liter": "price_per_liter",
+      "Effective Date": "effective_date",
+    };
 
-            switch (col) {
-              case "ID":
-                value = index + 1;
-                break;
-              case "Waybill / Trip Ticket":
-                value =
-                  item.trip_type === "ETMR" ? item.trip_ticket : item.waybill;
-                break;
-              case "RDD":
-                value = formatDate(item.rdd);
-                break;
-              case "Site":
-                value = item.site_code;
-                break;
-              case "Source - Destination":
-                value = `${item.source} - ${item.destination} - ${item.second_destination}`;
-                break;
-              case "Date Allowance Requested":
-                value = formatDate(item.date_allowance_requested);
-                break;
-              case "Date Allowance Released":
-                value = formatDate(item.date_allowance_released);
-                break;
-              case "Allowance":
-                value = item.allowance;
-                break;
-              case "Shipping":
-                value = item.shipping;
-                break;
-              case "Fuel":
-                value = item.fuel_amount;
-                break;
-              case "Total":
-                value = item.total_amount;
-                break;
-              default:
-                value =
-                  item[col.replace(/ /g, "_").toLowerCase()] ?? item[col] ?? "";
+    const tableRows = data.map((item, index) => {
+      return new TableRow({
+        children: tableColumn.map((column) => {
+          let value = "";
+
+          if (column === "ID") {
+            value = (index + 1).toString();
+          } else {
+            const key = columnKeyMap[column];
+
+            if (key === "effective_date") {
+              value = formatDate(item[key]);
+            } else {
+              value =
+                item[key] !== null && item[key] !== undefined
+                  ? item[key].toString()
+                  : "";
             }
+          }
 
-            return new TableCell({
-              children: [new Paragraph(String(value ?? ""))],
-            });
-          }),
-        })
-    );
+          return new TableCell({
+            children: [new Paragraph(value)],
+          });
+        }),
+      });
+    });
 
     const doc = new Document({
       sections: [
         {
           children: [
             new Paragraph({
-              text: "Allowances Report",
-              heading: HeadingLevel.HEADING_1,
+              text: "Fuels Report",
+              heading: "Heading1",
             }),
-            new Table({ rows: tableRows }),
+            new Table({
+              rows: [
+                new TableRow({
+                  children: tableColumn.map(
+                    (col) => new TableCell({ children: [new Paragraph(col)] })
+                  ),
+                }),
+                ...tableRows,
+              ],
+            }),
           ],
         },
       ],
     });
 
     Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, "allowances.docx");
+      saveAs(blob, "fuels.docx");
     });
   };
 
@@ -375,13 +259,13 @@ const OPSAllowance = () => {
       return;
     }
 
-    const filteredData = allowances.filter((allowances) => {
-      const allowancesDate = allowances.created_at
-        ? new Date(allowances.created_at.split("T")[0])
+    const filteredData = fuels.filter((fuels) => {
+      const fuelsDate = fuels.created_at
+        ? new Date(fuels.created_at.split("T")[0])
         : new Date();
       return (
-        (!exportFromDate || allowancesDate >= new Date(exportFromDate)) &&
-        (!exportToDate || allowancesDate <= new Date(exportToDate))
+        (!exportFromDate || fuelsDate >= new Date(exportFromDate)) &&
+        (!exportToDate || fuelsDate <= new Date(exportToDate))
       );
     });
 
@@ -414,6 +298,31 @@ const OPSAllowance = () => {
     setExportFileType(type);
   };
 
+  const toggleAddModal = () => {
+    setIsAddModalOpen(!isAddModalOpen);
+    setErrors({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
+      apiError: "",
+    });
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setFuelsData({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
+    });
+    setErrors({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
+      apiError: "",
+    });
+  };
+
   const handleInputChange = (e, name, value) => {
     let inputName, inputValue;
 
@@ -429,7 +338,7 @@ const OPSAllowance = () => {
       inputValue = Number(inputValue);
     }
 
-    setAllowancesData((prevData) => ({
+    setFuelsData((prevData) => ({
       ...prevData,
       [inputName]: inputValue,
     }));
@@ -440,85 +349,165 @@ const OPSAllowance = () => {
     }));
   };
 
-  const toggleEditModal = (allowance = null) => {
-    if (!allowance || !allowance.waybill) return;
+  const handleAddFuel = async (e) => {
+    e.preventDefault();
 
-    setSelectedAllowance({
-      ...allowance,
-      waybill: allowance.waybill,
+    setErrors({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
+      apiError: "",
     });
 
-    setAllowancesData({
-      stripperLoading: allowance?.stripper_loading || "",
-      stripperUnloading: allowance?.stripper_unloading || "",
-      crewAllowance: allowance?.crew_allowance || "",
-      tollFee: allowance?.toll_fee || "",
-      transferFee: allowance?.transfer_fee || "",
-      pullOutIncentive: allowance?.pullout_incentive || "",
-      transferIncentive: allowance?.transfer_incentive || "",
-      miscellaneous: allowance?.miscellaneous || "",
-    });
+    let hasError = false;
 
+    if (!fuelsData.siteId) {
+      setErrors((prev) => ({ ...prev, siteId: "Site name is required." }));
+      hasError = true;
+    }
+    if (!fuelsData.pricePerLiter) {
+      setErrors((prev) => ({
+        ...prev,
+        pricePerLiter: "Price per liter is required.",
+      }));
+      hasError = true;
+    }
+    if (!fuelsData.effectiveDate) {
+      setErrors((prev) => ({
+        ...prev,
+        effectiveDate: "Effecitve date is required.",
+      }));
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/insert-fuel`, {
+        site_id: fuelsData.siteId,
+        price_per_liter: fuelsData.pricePerLiter,
+        effective_date: fuelsData.effectiveDate,
+      });
+
+      if (response.data.success) {
+        setFuels((prevFuels) => [
+          ...prevFuels,
+          {
+            ...fuelsData,
+            site_id: fuelsData.siteId,
+            price_per_liter: fuelsData.pricePerLiter,
+            effective_date: fuelsData.effectiveDate,
+          },
+        ]);
+        fetchFuels();
+        closeAddModal();
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          apiError: response.data.message || "An error occurred.",
+        }));
+      }
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        apiError: error.response?.data?.message || "An error occurred.",
+      }));
+    }
+  };
+
+  const toggleEditModal = (fuel = null) => {
+    setSelectedFuel(fuel);
+    setFuelsData({
+      siteId: fuel?.site_id || "",
+      pricePerLiter: fuel?.price_per_liter || "",
+      effectiveDate: fuel?.effective_date
+        ? new Date(fuel.effective_date).toISOString().split("T")[0]
+        : "",
+    });
     setIsEditModalOpen(true);
+    setErrors({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
+      apiError: "",
+    });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
-    setSelectedAllowance(null);
-    setAllowancesData({
-      stripperLoading: "",
-      stripperUnloading: "",
-      crewAllowance: "",
-      tollFee: "",
-      transferFee: "",
-      pullOutIncentive: "",
-      transferIncentive: "",
-      miscellaneous: "",
+    setSelectedFuel(null);
+    setFuelsData({
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
     });
     setErrors({
-      stripperLoading: "",
-      stripperUnloading: "",
-      crewAllowance: "",
-      tollFee: "",
-      transferFee: "",
-      pullOutIncentive: "",
-      transferIncentive: "",
-      miscellaneous: "",
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
       apiError: "",
     });
   };
 
-  const handleEditAllowance = async (e) => {
+  const handleEditFuel = async (e) => {
     e.preventDefault();
 
     setErrors({
-      stripperLoading: "",
-      stripperUnloading: "",
-      crewAllowance: "",
-      tollFee: "",
-      transferFee: "",
-      pullOutIncentive: "",
-      transferIncentive: "",
-      miscellaneous: "",
+      siteId: "",
+      pricePerLiter: "",
+      effectiveDate: "",
       apiError: "",
     });
 
-    if (!selectedAllowance?.waybill) {
+    let hasError = false;
+
+    if (!fuelsData.siteId) {
+      setErrors((prev) => ({ ...prev, siteId: "Site name is required." }));
+      hasError = true;
+    }
+
+    if (!fuelsData.pricePerLiter) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid allowance selected.",
+        pricePerLiter: "Price per liter is required.",
       }));
-      return;
+      hasError = true;
     }
+
+    if (!fuelsData.effectiveDate) {
+      setErrors((prev) => ({
+        ...prev,
+        effectiveDate: "Effective date is required.",
+      }));
+      hasError = true;
+    }
+
+    if (hasError) return;
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/update-allowance/${selectedAllowance.waybill}`,
-        allowancesData
+        `${API_BASE_URL}/update-fuel/${selectedFuel.id}`,
+        {
+          site_id: fuelsData.siteId,
+          price_per_liter: fuelsData.pricePerLiter,
+          effective_date: fuelsData.effectiveDate,
+        }
       );
 
       if (response.data.success) {
-        await fetchAllowances();
+        setFuels((prevFuels) =>
+          prevFuels.map((fuel) =>
+            fuel.id === selectedFuel.id
+              ? {
+                  ...fuel,
+                  site_id: fuelsData.siteId,
+                  price_per_liter: fuelsData.pricePerLiter,
+                  effective_date: fuelsData.effectiveDate,
+                }
+              : fuel
+          )
+        );
+        fetchFuels();
         closeEditModal();
       } else {
         setErrors((prev) => ({
@@ -534,30 +523,37 @@ const OPSAllowance = () => {
     }
   };
 
-  const toggleCheckModal = (item = null) => {
-    setSelectedAllowance(item);
-    setIsCheckModalOpen(true);
+  const toggleDeleteModal = (fuel = null) => {
+    setSelectedFuel(fuel);
+    setIsDeleteModalOpen(!isDeleteModalOpen);
   };
 
-  const closeCheckModal = () => {
-    setSelectedAllowance(null);
-    setIsCheckModalOpen(false);
+  const closeDeleteModal = () => {
+    setSelectedFuel(null);
+    setIsDeleteModalOpen(false);
   };
 
-  const handleCheckAllowance = async () => {
-    if (!selectedAllowance?.waybill) return;
+  const handleDeleteFuel = async () => {
+    if (!selectedFuel) return;
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/check-allowances/${selectedAllowance.waybill}`
+      const response = await axios.delete(
+        `${API_BASE_URL}/delete-fuel/${selectedFuel.id}`
       );
 
       if (response.data.success) {
-        fetchAllowances();
-        closeCheckModal();
+        setFuels((prevFuels) =>
+          prevFuels.filter((fuel) => fuel.id !== selectedFuel.id)
+        );
+        fetchFuels();
+        toggleDeleteModal();
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        apiError:
+          error.response?.data?.message || "An error occurred while deleting.",
+      }));
     }
   };
 
@@ -591,12 +587,41 @@ const OPSAllowance = () => {
     };
   }, []);
 
+  const [siteOptions, setSiteOptions] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/sites`)
+      .then((response) => {
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const options = response.data.data.map((site) => ({
+            value: String(site.id),
+            label: site.site_name,
+          }));
+          setSiteOptions(options);
+        } else {
+          console.error("Invalid data format:", response.data);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching departments:", error);
+      });
+  }, []);
+
   return (
-    <div className={styles["allowance-content"]}>
+    <div className={styles["fuel-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>Allowance</h1>
+        <h1 className={styles["page-title"]}>Fuel</h1>
       </div>
       <div className={styles["content-body-container"]}>
+        <div className={styles["add-fuel-button-container"]}>
+          <button
+            className={styles["add-fuel-button"]}
+            onClick={toggleAddModal}
+          >
+            Add Fuel
+          </button>
+        </div>
         <div className={styles["filter-container"]} ref={filterRef}>
           <input
             className={styles.search}
@@ -749,8 +774,8 @@ const OPSAllowance = () => {
                           id="a-z"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "waybill-asc"}
-                          onChange={() => setTempSortOrder("waybill-asc")}
+                          checked={tempSortOrder === "code-asc"}
+                          onChange={() => setTempSortOrder("code-asc")}
                         />
                         A-Z
                       </label>
@@ -760,8 +785,8 @@ const OPSAllowance = () => {
                           id="z-a"
                           type="radio"
                           name="sort"
-                          checked={tempSortOrder === "waybill-desc"}
-                          onChange={() => setTempSortOrder("waybill-desc")}
+                          checked={tempSortOrder === "code-desc"}
+                          onChange={() => setTempSortOrder("code-desc")}
                         />
                         Z-A
                       </label>
@@ -960,183 +985,65 @@ const OPSAllowance = () => {
           <table className={styles.table}>
             <thead className={styles.thead}>
               <tr className={styles.htr}>
-                <th className={styles.th}>Week</th>
-                <th className={styles.th}>Principal</th>
-                <th className={styles.th}>Waybill / Trip Ticket</th>
-                <th className={styles.th}>Customer Name</th>
-                <th className={styles.th}>RDD</th>
-                <th className={styles.th}>Driver</th>
-                <th className={styles.th}>Crews</th>
-                <th className={styles.th}>Truck Plate</th>
-                <th className={styles.th}>Truck Type</th>
-                <th className={styles.th}>Trip Type</th>
-                <th className={styles.th}>Site</th>
-                <th className={styles.th}>Source - Destination</th>
-                <th className={styles.th}>Date Allowance Requested</th>
-                <th className={styles.th}>Date Allowance Released</th>
-                <th className={styles.th}>Allowance</th>
-                <th className={styles.th}>Shipping</th>
-                <th className={styles.th}>Fuel</th>
-                <th className={styles.th}>Stripper Loading</th>
-                <th className={styles.th}>Stripper Unloading</th>
-                <th className={styles.th}>Crew Allowance</th>
-                <th className={styles.th}>Toll Fee</th>
-                <th className={styles.th}>Transfer Fee</th>
-                <th className={styles.th}>Pullout Incentive</th>
-                <th className={styles.th}>Transfer Incentive</th>
-                <th className={styles.th}>Miscellaneous</th>
-                <th className={styles.th}>Total</th>
-                <th className={styles.th}>Status</th>
+                <th className={styles.th}>Site Name</th>
+                <th className={styles.th}>Price Per Liter</th>
+                <th className={styles.th}>Effective Date</th>
                 <th className={styles.th}>Actions</th>
               </tr>
             </thead>
             <tbody className={styles.tbody}>
-              {(() => {
-                const renderedWaybills = new Set();
-                return paginatedAllowances.map((item, index) => {
-                  const waybillKey =
-                    item.trip_type === "ETMR" ? item.trip_ticket : item.waybill;
-                  const showActions = !renderedWaybills.has(waybillKey);
-                  renderedWaybills.add(waybillKey);
-                  return (
-                    <tr className={styles.btr} key={waybillKey + index}>
-                      <td className={styles.td}>
-                        <span
-                          className={
-                            item.status === "Pending"
-                              ? styles["status-pin-pending"]
-                              : item.status === "Reviewed"
-                              ? styles["status-pin-reviewed"]
-                              : item.status === "Requested"
-                              ? styles["status-pin-requested"]
-                              : item.status === "Approved"
-                              ? styles["status-pin-approved"]
-                              : item.status === "Declined"
-                              ? styles["status-pin-declined"]
-                              : item.status === "Completed"
-                              ? styles["status-pin-completed"]
-                              : ""
+              {paginatedFuels.map((fuel, index) => (
+                <tr className={styles.btr} key={index}>
+                  <td className={styles.td}>{fuel.site_name}</td>
+                  <td className={styles.td}>{fuel.price_per_liter}</td>
+                  <td className={styles.td}>
+                    {formatDate(fuel.effective_date)}
+                  </td>
+                  <td className={styles.td}>
+                    <div className={styles["action-container"]}>
+                      <button
+                        className={styles["edit-button"]}
+                        onMouseEnter={() => setIsEditHovered(index)}
+                        onMouseLeave={() => setIsEditHovered(null)}
+                        onClick={() => toggleEditModal(fuel)}
+                      >
+                        <img
+                          className={styles["edit-icon"]}
+                          src={
+                            isEditHovered === index ? editHoverIcon : editIcon
                           }
-                        ></span>
-                        {item.week}
-                      </td>
-
-                      <td className={styles.td}>{item.principal}</td>
-                      <td className={styles.td}>
-                        {item.trip_type === "ETMR"
-                          ? item.trip_ticket
-                          : item.waybill}
-                      </td>
-                      <td className={styles.td}>{item.customer_name}</td>
-                      <td className={styles.td}>{formatDate(item.rdd)}</td>
-                      <td className={styles.td}>{item.driver}</td>
-                      <td className={styles.td}>{item.crews}</td>
-                      <td className={styles.td}>{item.truck_plate}</td>
-                      <td className={styles.td}>{item.truck_type}</td>
-                      <td className={styles.td}>{item.trip_type}</td>
-                      <td className={styles.td}>{item.site_code}</td>
-                      <td className={styles.td}>
-                        {item.source} - {item.first_destination} -{" "}
-                        {item.second_destination}
-                      </td>
-                      <td className={styles.td}>
-                        {formatDate(item.date_allowance_requested)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatDate(item.date_allowance_released)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.allowance)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.shipping)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.fuel_amount)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.stripper_loading)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.stripper_unloading)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.crew_allowance)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.toll_fee)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.transfer_fee)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.pullout_incentive)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.transfer_incentive)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.miscellaneous)}
-                      </td>
-                      <td className={styles.td}>
-                        {formatMoney(item.total_amount)}
-                      </td>
-                      <td className={styles.td}>{item.status}</td>
-                      <td className={styles.td}>
-                        <div className={styles["action-container"]}>
-                          {showActions && item.status === "Reviewed" && (
-                            <button
-                              className={styles["check-button"]}
-                              onMouseEnter={() => setIsCheckHovered(index)}
-                              onMouseLeave={() => setIsCheckHovered(null)}
-                              onClick={() => toggleCheckModal(item)}
-                            >
-                              <img
-                                className={styles["check-icon"]}
-                                src={
-                                  isCheckHovered === index
-                                    ? checkHoverIcon
-                                    : checkIcon
-                                }
-                                alt="Check"
-                              />
-                              <p>Check</p>
-                            </button>
-                          )}
-                          {showActions &&
-                            (item.status === "Pending" ||
-                              item.status === "Reviewed") && (
-                              <button
-                                className={styles["edit-button"]}
-                                onMouseEnter={() => setIsEditHovered(index)}
-                                onMouseLeave={() => setIsEditHovered(null)}
-                                onClick={() => toggleEditModal(item)}
-                              >
-                                <img
-                                  className={styles["edit-icon"]}
-                                  src={
-                                    isEditHovered === index
-                                      ? editHoverIcon
-                                      : editIcon
-                                  }
-                                  alt="Edit"
-                                />
-                                <p>Edit</p>
-                              </button>
-                            )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                });
-              })()}
-              {paginatedAllowances.length === 0 && (
+                          alt="Edit"
+                        />
+                        <p>Edit</p>
+                      </button>
+                      <button
+                        className={styles["delete-button"]}
+                        onMouseEnter={() => setIsDeleteHovered(index)}
+                        onMouseLeave={() => setIsDeleteHovered(null)}
+                        onClick={() => toggleDeleteModal(fuel)}
+                      >
+                        <img
+                          className={styles["delete-icon"]}
+                          src={
+                            isDeleteHovered === index
+                              ? deleteHoverIcon
+                              : deleteIcon
+                          }
+                          alt="Delete"
+                        />
+                        <p>Delete</p>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {paginatedFuels.length === 0 && (
                 <tr className={styles.btr}>
                   <td
-                    colSpan="28"
+                    colSpan="4"
                     className={`${styles.td} ${styles["search-response"]}`}
                   >
-                    No allowances found.
+                    No fuels found.
                   </td>
                 </tr>
               )}
@@ -1229,16 +1136,181 @@ const OPSAllowance = () => {
           </div>
         </div>
       </div>
-      {isEditModalOpen && selectedAllowance && (
+      {isAddModalOpen && (
+        <Modal isOpen={isAddModalOpen} onClose={toggleAddModal}>
+          <div
+            className={`${styles["modal-container"]} ${styles["add-modal-container"]}`}
+          >
+            <div className={styles["modal-header-container"]}>
+              <h3 className={styles["modal-title"]}>Add Fuel</h3>
+              <button
+                className={styles["close-modal-button"]}
+                onClick={closeAddModal}
+              >
+                <img
+                  className={styles["close-modal-icon"]}
+                  src={crossIcon}
+                  alt="Close"
+                />
+              </button>
+            </div>
+            <form
+              className={styles["modal-body-container"]}
+              onSubmit={handleAddFuel}
+            >
+              <label className={styles.label} htmlFor="site_id">
+                Site
+                <Select
+                  className={`${styles.input} ${
+                    errors.siteId ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                  }}
+                  id="site_id"
+                  name="siteId"
+                  options={siteOptions}
+                  value={
+                    siteOptions.find((opt) => opt.value === fuelsData.siteId) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    setFuelsData((prev) => ({
+                      ...prev,
+                      siteId: selected?.value || "",
+                    }))
+                  }
+                  placeholder="Select Site"
+                />
+                {errors.siteId && (
+                  <p className={styles["error-message"]}>{errors.siteId}</p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="price_per_liter">
+                Price Per Liter
+                <input
+                  className={`${styles.input} ${
+                    errors.pricePerLiter ? styles["error-input"] : ""
+                  }`}
+                  type="number"
+                  id="price_per_liter"
+                  name="pricePerLiter"
+                  value={fuelsData.pricePerLiter}
+                  onChange={handleInputChange}
+                />
+                {errors.pricePerLiter && (
+                  <p className={styles["error-message"]}>
+                    {errors.pricePerLiter}
+                  </p>
+                )}
+              </label>
+              <label className={styles.label} htmlFor="effective_date">
+                Effecitve Date
+                <input
+                  className={`${styles.input} ${
+                    errors.effectiveDate ? styles["error-input"] : ""
+                  }`}
+                  type="date"
+                  id="effective_date"
+                  name="effectiveDate"
+                  value={fuelsData.effectiveDate}
+                  onChange={handleInputChange}
+                />
+                {errors.effectiveDate && (
+                  <p className={styles["error-message"]}>
+                    {errors.effectiveDate}
+                  </p>
+                )}
+              </label>
+              {errors.apiError && (
+                <p className={styles["error-message"]}>{errors.apiError}</p>
+              )}
+              <button className={styles["submit-button"]}>Submit</button>
+            </form>
+          </div>
+        </Modal>
+      )}
+      {isEditModalOpen && selectedFuel && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
         >
-          <div
-            className={`${styles["modal-container"]} ${styles["edit-modal-container"]}`}
-          >
+          <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit Allowance</h3>
+              <h3 className={styles["modal-title"]}>Edit Fuel</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeEditModal}
@@ -1252,98 +1324,145 @@ const OPSAllowance = () => {
             </div>
             <form
               className={styles["modal-body-container"]}
-              onSubmit={handleEditAllowance}
+              onSubmit={handleEditFuel}
             >
-              <label className={styles.label} htmlFor="stripperLoading">
-                Stripper Loading
-                <input
-                  type="number"
-                  id="stripperLoading"
-                  name="stripperLoading"
-                  value={allowancesData.stripperLoading || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
+              <label className={styles.label} htmlFor="site_id">
+                Site
+                <Select
+                  className={`${styles.input} ${
+                    errors.siteId ? styles["error-input"] : ""
+                  }`}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderColor: state.isFocused
+                        ? "var(--text-secondary)"
+                        : "var(--borders)",
+                      boxShadow: state.isFocused
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : state.isHovered
+                        ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                        : "none",
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      "&:hover": {
+                        borderColor: "var(--text-secondary)",
+                        boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      cursor: "pointer",
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: isDarkMode
+                        ? "var(--cards)"
+                        : "var(--background)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? isDarkMode
+                          ? "#333333"
+                          : "#e9ecef"
+                        : state.isFocused
+                        ? isDarkMode
+                          ? "#2a2a2a"
+                          : "#f8f9fa"
+                        : base.backgroundColor,
+                      color: state.isSelected
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
+                        : base.color,
+                      cursor: "pointer",
+                      "&:hover": {
+                        backgroundColor: isDarkMode ? "#2a2a2a" : "#f8f9fa",
+                      },
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                    placeholder: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                    }),
+                  }}
+                  id="site_id"
+                  name="siteId"
+                  options={siteOptions}
+                  value={
+                    siteOptions.find(
+                      (opt) => opt.value === String(fuelsData.siteId)
+                    ) || null
+                  }
+                  onChange={(selected) =>
+                    setFuelsData((prev) => ({
+                      ...prev,
+                      siteId: selected?.value || "",
+                    }))
+                  }
+                  placeholder="Select Site"
                 />
+                {errors.siteId && (
+                  <p className={styles["error-message"]}>{errors.siteId}</p>
+                )}
               </label>
-              <label className={styles.label} htmlFor="stripperUnloading">
-                Stripper Unloading
+              <label className={styles.label} htmlFor="price_per_liter">
+                Price Per Liter
                 <input
+                  className={`${styles.input} ${
+                    errors.pricePerLiter ? styles["error-input"] : ""
+                  }`}
                   type="number"
-                  id="stripperUnloading"
-                  name="stripperUnloading"
-                  value={allowancesData.stripperUnloading || ""}
+                  id="price_per_liter"
+                  name="pricePerLiter"
+                  value={fuelsData.pricePerLiter}
                   onChange={handleInputChange}
-                  className={styles.input}
                 />
+                {errors.pricePerLiter && (
+                  <p className={styles["error-message"]}>
+                    {errors.pricePerLiter}
+                  </p>
+                )}
               </label>
-
-              <label className={styles.label} htmlFor="crewAllowance">
-                Crew Allowance
+              <label className={styles.label} htmlFor="effective_date">
+                Effecitve Date
                 <input
-                  type="number"
-                  id="crewAllowance"
-                  name="crewAllowance"
-                  value={allowancesData.crewAllowance || ""}
+                  className={`${styles.input} ${
+                    errors.effectiveDate ? styles["error-input"] : ""
+                  }`}
+                  type="date"
+                  id="effective_date"
+                  name="effectiveDate"
+                  value={fuelsData.effectiveDate}
                   onChange={handleInputChange}
-                  className={styles.input}
                 />
-              </label>
-              <label className={styles.label} htmlFor="tollFee">
-                Toll Fee
-                <input
-                  type="number"
-                  id="tollFee"
-                  name="tollFee"
-                  value={allowancesData.tollFee || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                />
-              </label>
-              <label className={styles.label} htmlFor="transferFee">
-                Transfer Fee
-                <input
-                  type="number"
-                  id="transferFee"
-                  name="transferFee"
-                  value={allowancesData.transferFee || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                />
-              </label>
-
-              <label className={styles.label} htmlFor="pullOutIncentive">
-                Pullout Incentive
-                <input
-                  type="number"
-                  id="pullOutIncentive"
-                  name="pullOutIncentive"
-                  value={allowancesData.pullOutIncentive || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                />
-              </label>
-              <label className={styles.label} htmlFor="transferIncentive">
-                Transfer Incentive
-                <input
-                  type="number"
-                  id="transferIncentive"
-                  name="transferIncentive"
-                  value={allowancesData.transferIncentive || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                />
-              </label>
-
-              <label className={styles.label} htmlFor="miscellaneous">
-                Miscellaneous
-                <input
-                  type="number"
-                  id="miscellaneous"
-                  name="miscellaneous"
-                  value={allowancesData.miscellaneous || ""}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                />
+                {errors.effectiveDate && (
+                  <p className={styles["error-message"]}>
+                    {errors.effectiveDate}
+                  </p>
+                )}
               </label>
               {errors.apiError && (
                 <p className={styles["error-message"]}>{errors.apiError}</p>
@@ -1353,27 +1472,27 @@ const OPSAllowance = () => {
           </div>
         </Modal>
       )}
-      {isCheckModalOpen && selectedAllowance && (
+      {isDeleteModalOpen && selectedFuel && (
         <Modal
-          isOpen={isCheckModalOpen}
-          onClose={() => setIsCheckModalOpen(false)}
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
         >
           <div
-            className={`${styles["modal-container"]} ${styles["check-modal-container"]}`}
+            className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
           >
-            <h1 className={styles["check-modal-header"]}>
-              Request allowance for this waybill?
+            <h1 className={styles["delete-modal-header"]}>
+              Are you sure to delete this fuel?
             </h1>
-            <div className={styles["check-modal-button-container"]}>
+            <div className={styles["delete-modal-button-container"]}>
               <button
-                className={styles["check-modal-button"]}
-                onClick={handleCheckAllowance}
+                className={styles["delete-modal-button"]}
+                onClick={handleDeleteFuel}
               >
-                Approve
+                Delete
               </button>
               <button
-                className={styles["cancel-check-modal-button"]}
-                onClick={closeCheckModal}
+                className={styles["cancel-delete-modal-button"]}
+                onClick={closeDeleteModal}
               >
                 Cancel
               </button>
@@ -1385,4 +1504,4 @@ const OPSAllowance = () => {
   );
 };
 
-export default OPSAllowance;
+export default FINFuel;

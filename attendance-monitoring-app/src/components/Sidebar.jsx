@@ -34,6 +34,8 @@ import holidayIcon from "../assets/images/holiday-icon.svg";
 import holidayActiveIcon from "../assets/images/holiday-active-icon.svg";
 import matrixIcon from "../assets/images/matrix-icon.svg";
 import matrixActiveIcon from "../assets/images/matrix-active-icon.svg";
+import fuelIcon from "../assets/images/fuel-icon.svg";
+import fuelActiveIcon from "../assets/images/fuel-active-icon.svg";
 import sunIcon from "../assets/images/sun-icon.svg";
 import moonIcon from "../assets/images/moon-icon.svg";
 import links from "../assets/links.json";
@@ -57,6 +59,7 @@ const icons = {
   allowance: allowanceIcon,
   holiday: holidayIcon,
   matrix: matrixIcon,
+  fuel: fuelIcon,
 };
 
 const activeIcons = {
@@ -76,6 +79,7 @@ const activeIcons = {
   allowance: allowanceActiveIcon,
   holiday: holidayActiveIcon,
   matrix: matrixActiveIcon,
+  fuel: fuelActiveIcon,
 };
 
 const Sidebar = ({ isSidebarOpen }) => {
@@ -129,7 +133,7 @@ const Sidebar = ({ isSidebarOpen }) => {
         "customer",
       ],
       "IT Department": ["dashboard", "departments", "device", "users"],
-      Finance: ["dashboard", "payroll", "allowance", "matrix"],
+      Finance: ["dashboard", "payroll", "allowance", "matrix", "fuel"],
     };
 
     const defaultLinks = ["dashboard"];

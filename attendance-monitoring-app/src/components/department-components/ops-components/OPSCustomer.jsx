@@ -316,26 +316,13 @@ const OPSCustomer = () => {
     });
   };
 
-  const [principalOptions, setPrincipalOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/principals`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const options = response.data.data.map((principal) => ({
-            value: String(principal.id),
-            label: principal.principal_name,
-          }));
-          setPrincipalOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-      });
-  }, []);
+  const principalOptions = [
+    { label: "NPI", value: "NPI" },
+    { label: "UL", value: "UL" },
+    { label: "PANA", value: "PANA" },
+    { label: "TDI", value: "TDI" },
+    { label: "AP", value: "AP" },
+  ];
 
   const handleInputChange = (eventOrValue, nameArg, valueArg) => {
     let fieldName, fieldValue;
@@ -426,12 +413,9 @@ const OPSCustomer = () => {
   };
 
   const toggleEditModal = (customer = null) => {
-    console.log("Customer principal ID:", customer?.principal_id);
-    console.log("Principal options:", principalOptions);
-
     setSelectedCustomer(customer);
     setCustomersData({
-      principal: customer?.principal_id ? String(customer.principal_id) : "",
+      principal: customer?.principal || "",
       customerNumber: customer?.customer_number || "",
       customerName: customer?.customer_name || "",
     });
@@ -1001,7 +985,7 @@ const OPSCustomer = () => {
                   <td className={styles.td}>
                     {index + 1}. {customer.customer_number}
                   </td>
-                  <td className={styles.td}>{customer.principal_code}</td>
+                  <td className={styles.td}>{customer.principal}</td>
                   <td className={styles.td}>{customer.customer_name}</td>
                   <td className={styles.td}>
                     <div className={styles["action-container"]}>

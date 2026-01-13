@@ -30,7 +30,7 @@ const OPSNPIDmr = () => {
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 20;
   const [tempFromDate, setTempFromDate] = useState("");
   const [tempToDate, setTempToDate] = useState("");
   const [sortOrder, setSortOrder] = useState("");
@@ -73,6 +73,7 @@ const OPSNPIDmr = () => {
     crewId: "",
     truckId: "",
     tsmTrucktype: "",
+    truckType: "",
     allowanceMatrixId: "",
     secondLegFo: "",
   });
@@ -98,6 +99,7 @@ const OPSNPIDmr = () => {
     crewId: "",
     truckId: "",
     tsmTrucktype: "",
+    truckType: "",
     allowanceMatrixId: "",
     secondLegFo: "",
     apiError: "",
@@ -108,7 +110,7 @@ const OPSNPIDmr = () => {
 
   const fetchDmrs = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/dmrs`);
+      const response = await axios.get(`${API_BASE_URL}/npi-dmrs`);
       if (response.data.success) {
         setDmrs(response.data.data);
       }
@@ -238,6 +240,7 @@ const OPSNPIDmr = () => {
     "Plate Number",
     "Truck Type",
     "TSM Truck Type",
+    "Source - Destination",
     "Second Leg FO",
   ];
 
@@ -266,7 +269,7 @@ const OPSNPIDmr = () => {
       "Plate Number": item.plate_number,
       "Truck Type": item.truck_type,
       "TSM Truck Type": item.tsm_trucktype,
-      "Source and Destination": item.route_name,
+      "Source - Destination": item.route_name,
       "Second Leg FO": item.second_leg_fo,
     }));
 
@@ -359,7 +362,7 @@ const OPSNPIDmr = () => {
           "Plate Number": item.plate_number,
           "Truck Type": item.truck_type,
           "TSM Truck Type": item.tsm_trucktype,
-          "Source and Destination": item.route_name,
+          "Source - Destination": item.route_name,
           "Second Leg FO": item.second_leg_fo,
         };
         return new TableCell({
@@ -460,6 +463,7 @@ const OPSNPIDmr = () => {
       crewId: "",
       truckId: "",
       tsmTrucktype: "",
+      truckType: "",
       allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
@@ -470,28 +474,36 @@ const OPSNPIDmr = () => {
     setIsAddModalOpen(false);
     setDmrsData({
       week: "",
-      waybill: "",
       category: "",
       siteId: "",
-      customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
       foNumber: "",
-      sealNumber: "",
       transactionDate: "",
       truckGateIn: "",
       dispatchDateAndTime: "",
       rdd: "",
       driverId: "",
-      crewId: "",
+      crewId: [],
       truckId: "",
-      tsmTrucktype: "",
-      allowanceMatrixId: "",
-      secondLegFo: "",
     });
+    setCustomers([
+      {
+        customerId: "",
+        secondLegFo: "",
+        invoices: [
+          {
+            invoice: "",
+            cdn: "",
+            quantity: "",
+            amount: "",
+            poNumber: "",
+            sealNumber: "",
+            tsmTrucktype: "",
+            truckType: "",
+            allowanceMatrixId: null,
+          },
+        ],
+      },
+    ]);
     setErrors({
       week: "",
       waybill: "",
@@ -513,24 +525,11 @@ const OPSNPIDmr = () => {
       crewId: "",
       truckId: "",
       tsmTrucktype: "",
+      truckType: "",
       allowanceMatrixId: "",
       secondLegFo: "",
       apiError: "",
     });
-    setCustomers([
-      {
-        customerId: "",
-        invoice: "",
-        cdn: "",
-        quantity: "",
-        amount: "",
-        poNumber: "",
-        sealNumber: "",
-        tsmTrucktype: "",
-        allowanceMatrixId: "",
-        secondLegFo: "",
-      },
-    ]);
   };
 
   const handleInputChange = (e, name, value) => {
@@ -605,7 +604,6 @@ const OPSNPIDmr = () => {
             category: dmrsData.category || null,
             site_id: dmrsData.siteId ? parseInt(dmrsData.siteId) : null,
             customer_id: ci.customerId ? parseInt(ci.customerId) : null,
-
             invoice: inv.invoice || null,
             cdn: inv.cdn || null,
             quantity: inv.quantity || null,
@@ -613,32 +611,25 @@ const OPSNPIDmr = () => {
             po_number: inv.poNumber || null,
             fo_number: dmrsData.foNumber || null,
             seal_number: inv.sealNumber || null,
-
             transaction_date: dmrsData.transactionDate || null,
             truck_gate_in: dmrsData.truckGateIn || null,
             dispatch_date_and_time: dmrsData.dispatchDateAndTime || null,
             rdd: dmrsData.rdd || null,
-
             driver_id: dmrsData.driverId ? parseInt(dmrsData.driverId) : null,
-
             crews: Array.isArray(dmrsData.crewId)
               ? dmrsData.crewId.map((id) => parseInt(id))
               : [],
-
             truck_id: dmrsData.truckId ? parseInt(dmrsData.truckId) : null,
-
             tsm_trucktype:
               inv.tsmTrucktype ||
               ci.tsmTrucktype ||
               dmrsData.tsmTrucktype ||
               null,
-
             allowance_matrix_id:
               inv.allowanceMatrixId ??
               ci.allowanceMatrixId ??
               dmrsData.allowanceMatrixId ??
               null,
-
             second_leg_fo:
               dmrsData.category === "Transshipment"
                 ? ci.secondLegFo || null
@@ -647,7 +638,9 @@ const OPSNPIDmr = () => {
         })
       );
 
-      const response = await axios.post(`${API_BASE_URL}/insert-dmr`, { rows });
+      const response = await axios.post(`${API_BASE_URL}/insert-npi-dmr`, {
+        rows,
+      });
 
       if (response.data.success) {
         fetchDmrs();
@@ -683,19 +676,17 @@ const OPSNPIDmr = () => {
 
   const toggleEditModal = (dmr = null) => {
     if (!dmr) {
-      console.warn("toggleEditModal: dmr is null");
       return;
     }
 
-    const relatedDmrs = dmrs.filter((item) => item.fo_number === dmr.fo_number);
+    const relatedDmrs = dmrs.filter((item) => item.waybill === dmr.waybill);
     if (relatedDmrs.length === 0) {
-      console.warn("No DMRs found for FO:", dmr.fo_number);
       return;
     }
 
     const customerMap = new Map();
     relatedDmrs.forEach((record) => {
-      const custId = record.customer_id?.toString() || "unknown";
+      const custId = record.customer_id?.toString() || "Unknown";
       if (!customerMap.has(custId)) {
         customerMap.set(custId, {
           customerId: record.customer_id?.toString() || "",
@@ -738,17 +729,16 @@ const OPSNPIDmr = () => {
       driverId: base.driver_id?.toString() || "",
       crewId: base.crews ? base.crews.split(",").map((s) => s.trim()) : [],
       truckId: base.truck_id?.toString() || "",
+      truckType: base.truck_type || "",
     });
 
     setSelectedDmr(dmr);
     setIsEditModalOpen(true);
-    console.log("Modal opened with customers:", parsedCustomers);
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedDmr(null);
-
     setDmrsData({
       week: "",
       category: "",
@@ -761,6 +751,7 @@ const OPSNPIDmr = () => {
       driverId: "",
       crewId: [],
       truckId: "",
+      truckType: "",
     });
     setCustomers([
       {
@@ -780,7 +771,6 @@ const OPSNPIDmr = () => {
         ],
       },
     ]);
-
     setErrors({
       week: "",
       waybill: "",
@@ -811,36 +801,10 @@ const OPSNPIDmr = () => {
   const handleEditDmr = async (e) => {
     e.preventDefault();
 
-    setErrors({
-      week: "",
-      waybill: "",
-      category: "",
-      siteId: "",
-      customerId: "",
-      invoice: "",
-      cdn: "",
-      quantity: "",
-      amount: "",
-      poNumber: "",
-      foNumber: "",
-      sealNumber: "",
-      transactionDate: "",
-      truckGateIn: "",
-      dispatchDateAndTime: "",
-      rdd: "",
-      driverId: "",
-      crewId: "",
-      truckId: "",
-      tsmTrucktype: "",
-      allowanceMatrixId: "",
-      secondLegFo: "",
-      apiError: "",
-    });
-
-    if (!selectedDmr || !selectedDmr.fo_number) {
+    if (!selectedDmr || !selectedDmr.waybill) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid FO Number selected.",
+        apiError: "No valid DMR Waybill selected.",
       }));
       return;
     }
@@ -848,9 +812,9 @@ const OPSNPIDmr = () => {
     let newErrors = {};
     let hasError = false;
 
-    customers.forEach((ci, custIndex) => {
+    customers.forEach((ci, idx) => {
       if (!ci.customerId) {
-        newErrors[`customerId_${custIndex}`] = "Customer is required.";
+        newErrors[`customerId_${idx}`] = "Customer is required.";
         hasError = true;
       }
 
@@ -859,8 +823,7 @@ const OPSNPIDmr = () => {
         String(ci.customerId) !== "152" &&
         !ci.secondLegFo?.trim()
       ) {
-        newErrors[`secondLegFo_${custIndex}`] =
-          "Second Leg FO Number is required for this customer.";
+        newErrors[`secondLegFo_${idx}`] = "Second Leg FO Number is required.";
         hasError = true;
       }
     });
@@ -875,23 +838,20 @@ const OPSNPIDmr = () => {
 
       const rows = customers.flatMap((ci) =>
         (ci.invoices ?? []).map((inv) => {
-          let key;
-          if (dmrsData.category === "Transshipment") {
-            key = `${dmrsData.foNumber}-${ci.secondLegFo || "NULL"}`;
-          } else {
-            key = `${dmrsData.foNumber}`;
-          }
+          const key =
+            dmrsData.category === "Transshipment"
+              ? `${dmrsData.foNumber}-${ci.secondLegFo || "NULL"}`
+              : dmrsData.foNumber;
 
-          const waybill = waybillMap[key] || null;
+          const waybill = waybillMap[key] || selectedDmr.waybill;
           waybillMap[key] = waybill;
 
           return {
             week: dmrsData.week || null,
             waybill,
             category: dmrsData.category || null,
-            site_id: dmrsData.siteId ? parseInt(dmrsData.siteId) : null,
-            customer_id: ci.customerId ? parseInt(ci.customerId) : null,
-
+            site_id: parseInt(dmrsData.siteId) || null,
+            customer_id: parseInt(ci.customerId) || null,
             invoice: inv.invoice || null,
             cdn: inv.cdn || null,
             quantity: inv.quantity || null,
@@ -899,32 +859,25 @@ const OPSNPIDmr = () => {
             po_number: inv.poNumber || null,
             fo_number: dmrsData.foNumber || null,
             seal_number: inv.sealNumber || null,
-
             transaction_date: dmrsData.transactionDate || null,
             truck_gate_in: dmrsData.truckGateIn || null,
             dispatch_date_and_time: dmrsData.dispatchDateAndTime || null,
             rdd: dmrsData.rdd || null,
-
-            driver_id: dmrsData.driverId ? parseInt(dmrsData.driverId) : null,
-
+            driver_id: parseInt(dmrsData.driverId) || null,
             crews: Array.isArray(dmrsData.crewId)
               ? dmrsData.crewId.map((id) => parseInt(id))
               : [],
-
-            truck_id: dmrsData.truckId ? parseInt(dmrsData.truckId) : null,
-
+            truck_id: parseInt(dmrsData.truckId) || null,
             tsm_trucktype:
               inv.tsmTrucktype ||
               ci.tsmTrucktype ||
               dmrsData.tsmTrucktype ||
               null,
-
             allowance_matrix_id:
               inv.allowanceMatrixId ??
               ci.allowanceMatrixId ??
               dmrsData.allowanceMatrixId ??
               null,
-
             second_leg_fo:
               dmrsData.category === "Transshipment"
                 ? ci.secondLegFo || null
@@ -934,30 +887,23 @@ const OPSNPIDmr = () => {
       );
 
       const response = await axios.put(
-        `${API_BASE_URL}/update-dmr/${encodeURIComponent(dmrsData.foNumber)}`,
+        `${API_BASE_URL}/update-npi-dmr/${encodeURIComponent(
+          selectedDmr.waybill
+        )}`,
         { rows }
       );
 
       if (response.data.success) {
-        setDmrs((prevDmrs) =>
-          prevDmrs
-            .filter((dmr) => dmr.fo_number !== dmrsData.foNumber)
-            .concat(
-              rows.map((r) => ({
-                ...r,
-                crews: Array.isArray(r.crews) ? r.crews.join(",") : r.crews,
-              }))
-            )
-        );
+        fetchDmrs();
         closeEditModal();
       } else {
         setErrors((prev) => ({
           ...prev,
-          apiError: response.data.message || "An error occurred.",
+          apiError: response.data.message || "Update failed.",
         }));
       }
     } catch (error) {
-      console.error("FRONTEND: Axios error in handleEditDmr:", error);
+      console.error("FRONTEND update error:", error);
       setErrors((prev) => ({
         ...prev,
         apiError: error.response?.data?.message || "Failed to update DMR.",
@@ -976,26 +922,27 @@ const OPSNPIDmr = () => {
   };
 
   const handleDeleteDmr = async () => {
-    if (!selectedDmr || !selectedDmr.fo_number) {
+    if (!selectedDmr || !selectedDmr.waybill) {
       setErrors((prev) => ({
         ...prev,
-        apiError: "Invalid FO Number selected for deletion.",
+        apiError: "Invalid waybill selected for deletion.",
       }));
       return;
     }
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/delete-dmr-by-fo/${encodeURIComponent(
-          selectedDmr.fo_number
+        `${API_BASE_URL}/delete-npi-dmr/${encodeURIComponent(
+          selectedDmr.waybill
         )}`
       );
 
       if (response.data.success) {
         setDmrs((prevDmrs) =>
-          prevDmrs.filter((dmr) => dmr.fo_number !== selectedDmr.fo_number)
+          prevDmrs.filter((dmr) => dmr.waybill !== selectedDmr.waybill)
         );
         fetchDmrs();
+        closeDeleteModal();
       } else {
         setErrors((prev) => ({
           ...prev,
@@ -1171,15 +1118,18 @@ const OPSNPIDmr = () => {
   }, []);
 
   const [customerOptions, setCustomerOptions] = useState([]);
+
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/customers`)
       .then((response) => {
         if (response.data.success && Array.isArray(response.data.data)) {
-          const options = response.data.data.map((customer) => ({
-            value: String(customer.id),
-            label: customer.customer_name,
-          }));
+          const options = response.data.data
+            .filter((customer) => customer.principal === "NPI")
+            .map((customer) => ({
+              value: String(customer.id),
+              label: customer.customer_name,
+            }));
 
           setCustomerOptions(options);
         } else {
@@ -1296,11 +1246,16 @@ const OPSNPIDmr = () => {
           const trucks = response.data.data;
 
           const filteredTrucks = trucks.filter((truck) => {
-            const isAssigned = dmrs.some((dmr) => dmr.truck_id === truck.id);
+            const truckDmrs = dmrs.filter((dmr) => dmr.truck_id === truck.id);
+
+            const hasActiveDmr = truckDmrs.some(
+              (dmr) => dmr.status !== "Completed"
+            );
+
             const isCurrentTruck =
               selectedDmr && selectedDmr.truck_id === truck.id;
 
-            return !isAssigned || isCurrentTruck;
+            return !hasActiveDmr || isCurrentTruck;
           });
 
           if (
@@ -1319,6 +1274,7 @@ const OPSNPIDmr = () => {
           const options = filteredTrucks.map((truck) => ({
             value: String(truck.id),
             label: `${truck.plate_number} - ${truck.truck_type}`,
+            truckType: truck.truck_type,
           }));
 
           setPlateNumberOptions(options);
@@ -1330,28 +1286,6 @@ const OPSNPIDmr = () => {
         console.error("Error fetching trucks:", error);
       });
   }, [dmrs, selectedDmr]);
-
-  const [allowanceMatrixOptions, setAllowanceMatrixOptions] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${API_BASE_URL}/matrixes`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const options = response.data.data.map((matrix) => ({
-            value: String(matrix.id),
-            label: `${matrix.source} - ${matrix.destination}`,
-          }));
-
-          setAllowanceMatrixOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-      });
-  }, []);
 
   const [tsmTrucktypeOptions, setTsmTrucktypeOptions] = useState([]);
 
@@ -1379,15 +1313,28 @@ const OPSNPIDmr = () => {
       });
   }, []);
 
+  const [allowanceMatrixData, setAllowanceMatrixData] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/matrixes`)
+      .then((res) => {
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setAllowanceMatrixData(res.data.data);
+        }
+      })
+      .catch((err) => console.error("Error fetching allowance matrix:", err));
+  }, []);
+
   return (
     <div className={styles["dmr-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>DMR</h1>
+        <h1 className={styles["page-title"]}>NPI DMR</h1>
       </div>
       <div className={styles["content-body-container"]}>
         <div className={styles["add-dmr-button-container"]}>
           <button className={styles["add-dmr-button"]} onClick={toggleAddModal}>
-            Add Dmr
+            Add DMR
           </button>
         </div>
         <div className={styles["filter-container"]} ref={filterRef}>
@@ -1775,7 +1722,7 @@ const OPSNPIDmr = () => {
                 <th className={styles.th}>Plate Number</th>
                 <th className={styles.th}>Truck Type</th>
                 <th className={styles.th}>TSM Truck Type</th>
-                <th className={styles.th}>Source and Destination</th>
+                <th className={styles.th}>Source - Destination</th>
                 <th className={styles.th}>Second Leg FO</th>
                 <th className={styles.th}>Status</th>
                 <th className={styles.th}>Actions</th>
@@ -1785,7 +1732,7 @@ const OPSNPIDmr = () => {
               {paginatedDmrs.map((dmr, index) => {
                 const showActions =
                   index === 0 ||
-                  dmr.fo_number !== paginatedDmrs[index - 1].fo_number;
+                  dmr.waybill !== paginatedDmrs[index - 1].waybill;
 
                 return (
                   <tr className={styles.btr} key={index}>
@@ -1794,10 +1741,16 @@ const OPSNPIDmr = () => {
                         className={
                           dmr.status === "Pending"
                             ? styles["status-pin-pending"]
+                            : dmr.status === "Reviewed"
+                            ? styles["status-pin-reviewed"]
+                            : dmr.status === "Requested"
+                            ? styles["status-pin-requested"]
                             : dmr.status === "Approved"
                             ? styles["status-pin-approved"]
                             : dmr.status === "Declined"
                             ? styles["status-pin-declined"]
+                            : dmr.status === "Completed"
+                            ? styles["status-pin-completed"]
                             : ""
                         }
                       ></span>
@@ -1837,49 +1790,53 @@ const OPSNPIDmr = () => {
                     <td className={styles.td}>{dmr.second_leg_fo}</td>
                     <td className={styles.td}>{dmr.status}</td>
                     <td className={styles.td}>
-                      {showActions && (
-                        <div className={styles["action-container"]}>
-                          <button
-                            className={styles["edit-button"]}
-                            onMouseEnter={() => setIsEditHovered(index)}
-                            onMouseLeave={() => setIsEditHovered(null)}
-                            onClick={() => toggleEditModal(dmr)}
-                          >
-                            <img
-                              className={styles["edit-icon"]}
-                              src={
-                                isEditHovered === index
-                                  ? editHoverIcon
-                                  : editIcon
-                              }
-                              alt="Edit"
-                            />
-                            <p>Edit</p>
-                          </button>
-                          <button
-                            className={styles["delete-button"]}
-                            onMouseEnter={() => setIsDeleteHovered(index)}
-                            onMouseLeave={() => setIsDeleteHovered(null)}
-                            onClick={() => toggleDeleteModal(dmr)}
-                          >
-                            <img
-                              className={styles["delete-icon"]}
-                              src={
-                                isDeleteHovered === index
-                                  ? deleteHoverIcon
-                                  : deleteIcon
-                              }
-                              alt="Delete"
-                            />
-                            <p>Delete</p>
-                          </button>
-                        </div>
-                      )}
+                      {showActions &&
+                        dmr.status !== "Reviewed" &&
+                        dmr.status !== "Requested" &&
+                        dmr.status !== "Approved" &&
+                        dmr.status !== "Declined" &&
+                        dmr.status !== "Completed" && (
+                          <div className={styles["action-container"]}>
+                            <button
+                              className={styles["edit-button"]}
+                              onMouseEnter={() => setIsEditHovered(index)}
+                              onMouseLeave={() => setIsEditHovered(null)}
+                              onClick={() => toggleEditModal(dmr)}
+                            >
+                              <img
+                                className={styles["edit-icon"]}
+                                src={
+                                  isEditHovered === index
+                                    ? editHoverIcon
+                                    : editIcon
+                                }
+                                alt="Edit"
+                              />
+                              <p>Edit</p>
+                            </button>
+                            <button
+                              className={styles["delete-button"]}
+                              onMouseEnter={() => setIsDeleteHovered(index)}
+                              onMouseLeave={() => setIsDeleteHovered(null)}
+                              onClick={() => toggleDeleteModal(dmr)}
+                            >
+                              <img
+                                className={styles["delete-icon"]}
+                                src={
+                                  isDeleteHovered === index
+                                    ? deleteHoverIcon
+                                    : deleteIcon
+                                }
+                                alt="Delete"
+                              />
+                              <p>Delete</p>
+                            </button>
+                          </div>
+                        )}
                     </td>
                   </tr>
                 );
               })}
-
               {paginatedDmrs.length === 0 && (
                 <tr className={styles.btr}>
                   <td
@@ -2605,6 +2562,7 @@ const OPSNPIDmr = () => {
                       setDmrsData((prev) => ({
                         ...prev,
                         truckId: selected?.value || "",
+                        truckType: selected?.truckType || "",
                       }))
                     }
                     classNamePrefix="react-select"
@@ -2762,400 +2720,443 @@ const OPSNPIDmr = () => {
                             )}
                           </label>
                         )}
-                      {(customer.invoices ?? []).map((inv, invIndex) => (
-                        <div key={invIndex} className={styles["invoice-block"]}>
-                          {customer.invoices.length > 1 && (
-                            <div className={styles["remove-button-container"]}>
-                              <button
-                                type="button"
-                                className={styles["remove-button"]}
-                                onClick={() =>
-                                  removeInvoice(custIndex, invIndex)
-                                }
+                      {(customer.invoices ?? []).map((inv, invIndex) => {
+                        const filteredAllowanceMatrixOptions =
+                          allowanceMatrixData
+                            .filter(
+                              (matrix) =>
+                                matrix.trip_type === "DMR" &&
+                                matrix.principal === "NPI" &&
+                                matrix.truck_type === dmrsData.truckType
+                            )
+                            .map((matrix) => {
+                              const secondDest =
+                                matrix.second_destination &&
+                                matrix.second_destination.trim() !== ""
+                                  ? ` → ${matrix.second_destination}`
+                                  : "";
+
+                              return {
+                                value: String(matrix.id),
+                                label: `(${matrix.code}) ${matrix.source} → ${matrix.first_destination}${secondDest}`,
+                              };
+                            });
+
+                        return (
+                          <div
+                            key={invIndex}
+                            className={styles["invoice-block"]}
+                          >
+                            {customer.invoices.length > 1 && (
+                              <div
+                                className={styles["remove-button-container"]}
                               >
-                                <img
-                                  className={styles["remove-button-icon"]}
-                                  src={crossIcon}
-                                  alt="Remove"
-                                />
-                              </button>
-                            </div>
-                          )}
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="invoice"
-                          >
-                            Invoice
-                            <input
-                              className={`${styles.input} ${
-                                errors.invoice ? styles["error-input"] : ""
-                              }`}
-                              type="number"
-                              id="invoice"
-                              value={inv.invoice}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "invoice",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`invoice${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`invoice${custIndex}`]}
-                              </p>
+                                <button
+                                  type="button"
+                                  className={styles["remove-button"]}
+                                  onClick={() =>
+                                    removeInvoice(custIndex, invIndex)
+                                  }
+                                >
+                                  <img
+                                    className={styles["remove-button-icon"]}
+                                    src={crossIcon}
+                                    alt="Remove"
+                                  />
+                                </button>
+                              </div>
                             )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="cdn"
-                          >
-                            CDN
-                            <input
-                              className={`${styles.input} ${
-                                errors.cdn ? styles["error-input"] : ""
-                              }`}
-                              type="text"
-                              id="cdn"
-                              value={inv.cdn}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "cdn",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`cdn${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`cdn${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="quantity"
-                          >
-                            Quantity
-                            <input
-                              className={`${styles.input}  ${
-                                errors.quantity ? styles["error-input"] : ""
-                              }`}
-                              type="number"
-                              id="quantity"
-                              value={inv.quantity}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`quantity${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`quantity${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="amount"
-                          >
-                            Amount
-                            <input
-                              className={`${styles.input} ${
-                                errors.amount ? styles["error-input"] : ""
-                              }`}
-                              type="number"
-                              id="amount"
-                              value={inv.amount}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "amount",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`amount${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`amount${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="po_number"
-                          >
-                            PO Number
-                            <input
-                              className={`${styles.input} ${
-                                errors.poNumber ? styles["error-input"] : ""
-                              }`}
-                              type="text"
-                              id="po_number"
-                              value={inv.poNumber}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "poNumber",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`poNumber${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`poNumber${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="seal_number"
-                          >
-                            Seal Number
-                            <input
-                              className={`${styles.input} ${
-                                errors.sealNumber ? styles["error-input"] : ""
-                              }`}
-                              type="text"
-                              id="seal_number"
-                              value={inv.sealNumber}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "sealNumber",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`sealNumber${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`sealNumber${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="allowance_matrix_id"
-                          >
-                            Source and Destination
-                            <Select
-                              className={`${styles.input} ${
-                                errors.allowanceMatrixId
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              styles={{
-                                control: (base, state) => ({
-                                  ...base,
-                                  borderColor: state.isFocused
-                                    ? "var(--text-secondary)"
-                                    : "var(--borders)",
-                                  boxShadow: state.isFocused
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : state.isHovered
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : "none",
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: "var(--text-primary)",
-                                  "&:hover": {
-                                    borderColor: "var(--text-secondary)",
-                                    boxShadow:
-                                      "0 0 4px rgba(109, 118, 126, 0.8)",
-                                  },
-                                  transition: "all 0.3s ease-in-out",
-                                  cursor: "pointer",
-                                }),
-                                menu: (base) => ({
-                                  ...base,
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: "var(--text-primary)",
-                                  border: `1px solid var(--borders)`,
-                                }),
-                                option: (base, state) => ({
-                                  ...base,
-                                  backgroundColor: state.isSelected
-                                    ? isDarkMode
-                                      ? "#333333"
-                                      : "#e9ecef"
-                                    : state.isFocused
-                                    ? isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa"
-                                    : base.backgroundColor,
-                                  color: state.isSelected
-                                    ? "var(--text-primary)"
-                                    : base.color,
-                                  cursor: "pointer",
-                                  "&:hover": {
-                                    backgroundColor: isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa",
-                                  },
-                                }),
-                                singleValue: (base) => ({
-                                  ...base,
-                                  color: "var(--text-primary)",
-                                }),
-                                placeholder: (base) => ({
-                                  ...base,
-                                  color: "var(--text-secondary)",
-                                }),
-                                input: (base) => ({
-                                  ...base,
-                                  color: "var(--text-primary)",
-                                }),
-                              }}
-                              id="allowance_matrix_id"
-                              name="allowanceMatrixId"
-                              options={allowanceMatrixOptions}
-                              value={allowanceMatrixOptions.find(
-                                (opt) => opt.value === inv.allowanceMatrixId
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="invoice"
+                            >
+                              Invoice
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`invoice${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="invoice"
+                                value={inv.invoice}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "invoice",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`invoice${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`invoice${custIndex}`]}
+                                </p>
                               )}
-                              onChange={(selected) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "allowanceMatrixId",
-                                  selected?.value || null
-                                )
-                              }
-                              placeholder="Select Source and Destination"
-                            />
-                            {errors[`allowanceMatrixId${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`allowanceMatrixId${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="tsm_trucktype"
-                          >
-                            TSM Truck Type
-                            <Select
-                              className={`${styles.input} ${
-                                errors[`tsmTrucktype_${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              styles={{
-                                control: (base, state) => ({
-                                  ...base,
-                                  borderColor: state.isFocused
-                                    ? "var(--text-secondary)"
-                                    : "var(--borders)",
-                                  boxShadow: state.isFocused
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : state.isHovered
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : "none",
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                  "&:hover": {
-                                    borderColor: "var(--text-secondary)",
-                                    boxShadow:
-                                      "0 0 4px rgba(109, 118, 126, 0.8)",
-                                  },
-                                  transition: "all 0.3s ease-in-out",
-                                  cursor: "pointer",
-                                }),
-                                menu: (base) => ({
-                                  ...base,
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                  border: `1px solid ${
-                                    isDarkMode
-                                      ? "var(--borders)"
-                                      : "var(--borders)"
-                                  }`,
-                                }),
-                                option: (base, state) => ({
-                                  ...base,
-                                  backgroundColor: state.isSelected
-                                    ? isDarkMode
-                                      ? "#333333"
-                                      : "#e9ecef"
-                                    : state.isFocused
-                                    ? isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa"
-                                    : base.backgroundColor,
-                                  color: state.isSelected
-                                    ? isDarkMode
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="cdn"
+                            >
+                              CDN
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`cdn${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="cdn"
+                                value={inv.cdn}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "cdn",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`cdn${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`cdn${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="quantity"
+                            >
+                              Quantity
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`quantity${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="quantity"
+                                value={inv.quantity}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`quantity${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`quantity${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="amount"
+                            >
+                              Amount
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`amount${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="amount"
+                                value={inv.amount}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "amount",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`amount${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`amount${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="po_number"
+                            >
+                              PO Number
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`poNumber${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="po_number"
+                                value={inv.poNumber}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "poNumber",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`poNumber${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`poNumber${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="seal_number"
+                            >
+                              Seal Number
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`sealNumber${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="seal_number"
+                                value={inv.sealNumber}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "sealNumber",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`sealNumber${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`sealNumber${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="tsm_trucktype"
+                            >
+                              TSM Truck Type
+                              <Select
+                                className={`${styles.input} ${
+                                  errors[`tsmTrucktype_${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                styles={{
+                                  control: (base, state) => ({
+                                    ...base,
+                                    borderColor: state.isFocused
+                                      ? "var(--text-secondary)"
+                                      : "var(--borders)",
+                                    boxShadow: state.isFocused
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : state.isHovered
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : "none",
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: isDarkMode
                                       ? "var(--text-primary)"
-                                      : "var(--text-primary)"
-                                    : base.color,
-                                  cursor: "pointer",
-                                  "&:hover": {
+                                      : "var(--text-primary)",
+                                    "&:hover": {
+                                      borderColor: "var(--text-secondary)",
+                                      boxShadow:
+                                        "0 0 4px rgba(109, 118, 126, 0.8)",
+                                    },
+                                    transition: "all 0.3s ease-in-out",
+                                    cursor: "pointer",
+                                  }),
+                                  menu: (base) => ({
+                                    ...base,
                                     backgroundColor: isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa",
-                                  },
-                                }),
-                                singleValue: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                }),
-                                placeholder: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-secondary)"
-                                    : "var(--text-secondary)",
-                                }),
-                                input: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                }),
-                              }}
-                              id="tsm_trucktype"
-                              options={tsmTrucktypeOptions}
-                              value={tsmTrucktypeOptions.find(
-                                (opt) => opt.value === inv.tsmTrucktype
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                    border: `1px solid ${
+                                      isDarkMode
+                                        ? "var(--borders)"
+                                        : "var(--borders)"
+                                    }`,
+                                  }),
+                                  option: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: state.isSelected
+                                      ? isDarkMode
+                                        ? "#333333"
+                                        : "#e9ecef"
+                                      : state.isFocused
+                                      ? isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa"
+                                      : base.backgroundColor,
+                                    color: state.isSelected
+                                      ? isDarkMode
+                                        ? "var(--text-primary)"
+                                        : "var(--text-primary)"
+                                      : base.color,
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa",
+                                    },
+                                  }),
+                                  singleValue: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                  }),
+                                  placeholder: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-secondary)"
+                                      : "var(--text-secondary)",
+                                  }),
+                                  input: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                  }),
+                                }}
+                                id="tsm_trucktype"
+                                options={tsmTrucktypeOptions}
+                                value={tsmTrucktypeOptions.find(
+                                  (opt) => opt.value === inv.tsmTrucktype
+                                )}
+                                onChange={(selected) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "tsmTrucktype",
+                                    selected?.value || ""
+                                  )
+                                }
+                                placeholder="Select TSM Truck Type"
+                              />
+                              {errors[`tsmTrucktype_${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`tsmTrucktype_${custIndex}`]}
+                                </p>
                               )}
-                              onChange={(selected) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "tsmTrucktype",
-                                  selected?.value || ""
-                                )
-                              }
-                              placeholder="Select TSM Truck Type"
-                            />
-                            {errors[`tsmTrucktype_${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`tsmTrucktype_${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                        </div>
-                      ))}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="allowance_matrix_id"
+                            >
+                              Source and Destinations
+                              <Select
+                                className={`${styles.input} ${
+                                  errors[`allowanceMatrixId${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                styles={{
+                                  control: (base, state) => ({
+                                    ...base,
+                                    borderColor: state.isFocused
+                                      ? "var(--text-secondary)"
+                                      : "var(--borders)",
+                                    boxShadow: state.isFocused
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : state.isHovered
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : "none",
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: "var(--text-primary)",
+                                    "&:hover": {
+                                      borderColor: "var(--text-secondary)",
+                                      boxShadow:
+                                        "0 0 4px rgba(109, 118, 126, 0.8)",
+                                    },
+                                    transition: "all 0.3s ease-in-out",
+                                    cursor: "pointer",
+                                  }),
+                                  menu: (base) => ({
+                                    ...base,
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: "var(--text-primary)",
+                                    border: `1px solid var(--borders)`,
+                                  }),
+                                  option: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: state.isSelected
+                                      ? isDarkMode
+                                        ? "#333333"
+                                        : "#e9ecef"
+                                      : state.isFocused
+                                      ? isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa"
+                                      : base.backgroundColor,
+                                    color: state.isSelected
+                                      ? "var(--text-primary)"
+                                      : base.color,
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa",
+                                    },
+                                  }),
+                                  singleValue: (base) => ({
+                                    ...base,
+                                    color: "var(--text-primary)",
+                                  }),
+                                  placeholder: (base) => ({
+                                    ...base,
+                                    color: "var(--text-secondary)",
+                                  }),
+                                  input: (base) => ({
+                                    ...base,
+                                    color: "var(--text-primary)",
+                                  }),
+                                }}
+                                id="allowance_matrix_id"
+                                name="allowanceMatrixId"
+                                options={filteredAllowanceMatrixOptions}
+                                value={filteredAllowanceMatrixOptions.find(
+                                  (opt) =>
+                                    String(opt.value) ===
+                                    String(inv.allowanceMatrixId)
+                                )}
+                                onChange={(selected) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "allowanceMatrixId",
+                                    selected?.value || null
+                                  )
+                                }
+                                placeholder="Select Source and Destination"
+                                isDisabled={!dmrsData.truckType}
+                              />
+                              {errors[`allowanceMatrixId${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`allowanceMatrixId${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                          </div>
+                        );
+                      })}
                       <button
                         type="button"
                         className={styles["add-customer-invoice"]}
@@ -3811,6 +3812,7 @@ const OPSNPIDmr = () => {
                       setDmrsData((prev) => ({
                         ...prev,
                         truckId: selected?.value || "",
+                        truckType: selected?.truckType || "",
                       }))
                     }
                     classNamePrefix="react-select"
@@ -3968,414 +3970,442 @@ const OPSNPIDmr = () => {
                             )}
                           </label>
                         )}
-                      {(customer.invoices ?? []).map((inv, invIndex) => (
-                        <div key={invIndex} className={styles["invoice-block"]}>
-                          {customer.invoices.length > 1 && (
-                            <div className={styles["remove-button-container"]}>
-                              <button
-                                type="button"
-                                className={styles["remove-button"]}
-                                onClick={() =>
-                                  removeInvoice(custIndex, invIndex)
-                                }
+                      {(customer.invoices ?? []).map((inv, invIndex) => {
+                        const filteredAllowanceMatrixOptions =
+                          allowanceMatrixData
+                            .filter(
+                              (matrix) =>
+                                matrix.trip_type === "DMR" &&
+                                matrix.principal === "NPI" &&
+                                matrix.truck_type === dmrsData.truckType
+                            )
+                            .map((matrix) => {
+                              const secondDest =
+                                matrix.second_destination &&
+                                matrix.second_destination.trim() !== ""
+                                  ? ` → ${matrix.second_destination}`
+                                  : "";
+
+                              return {
+                                value: String(matrix.id),
+                                label: `(${matrix.code}) ${matrix.source} → ${matrix.first_destination}${secondDest}`,
+                              };
+                            });
+                        return (
+                          <div
+                            key={invIndex}
+                            className={styles["invoice-block"]}
+                          >
+                            {customer.invoices.length > 1 && (
+                              <div
+                                className={styles["remove-button-container"]}
                               >
-                                <img
-                                  className={styles["remove-button-icon"]}
-                                  src={crossIcon}
-                                  alt="Remove"
-                                />
-                              </button>
-                            </div>
-                          )}
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="invoice"
-                          >
-                            Invoice
-                            <input
-                              className={`${styles.input} ${
-                                errors[`invoice${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="number"
-                              id="invoice"
-                              value={inv.invoice}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "invoice",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`invoice${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`invoice${custIndex}`]}
-                              </p>
+                                <button
+                                  type="button"
+                                  className={styles["remove-button"]}
+                                  onClick={() =>
+                                    removeInvoice(custIndex, invIndex)
+                                  }
+                                >
+                                  <img
+                                    className={styles["remove-button-icon"]}
+                                    src={crossIcon}
+                                    alt="Remove"
+                                  />
+                                </button>
+                              </div>
                             )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="cdn"
-                          >
-                            CDN
-                            <input
-                              className={`${styles.input} ${
-                                errors[`cdn${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="text"
-                              id="cdn"
-                              value={inv.cdn}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "cdn",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`cdn${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`cdn${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="quantity"
-                          >
-                            Quantity
-                            <input
-                              className={`${styles.input} ${
-                                errors[`quantity${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="number"
-                              id="quantity"
-                              value={inv.quantity}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`quantity${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`quantity${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="amount"
-                          >
-                            Amount
-                            <input
-                              className={`${styles.input} ${
-                                errors[`amount${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="number"
-                              id="amount"
-                              value={inv.amount}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "amount",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`amount${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`amount${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="po_number"
-                          >
-                            PO Number
-                            <input
-                              className={`${styles.input} ${
-                                errors[`poNumber${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="text"
-                              id="po_number"
-                              value={inv.poNumber}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "poNumber",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`poNumber${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`poNumber${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="seal_number"
-                          >
-                            Seal Number
-                            <input
-                              className={`${styles.input} ${
-                                errors[`sealNumber${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              type="text"
-                              id="seal_number"
-                              value={inv.sealNumber}
-                              onChange={(e) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "sealNumber",
-                                  e.target.value
-                                )
-                              }
-                            />
-                            {errors[`sealNumber${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`sealNumber${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="allowance_matrix_id"
-                          >
-                            Source and Destination
-                            <Select
-                              className={`${styles.input} ${
-                                errors[`allowanceMatrixId${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              styles={{
-                                control: (base, state) => ({
-                                  ...base,
-                                  borderColor: state.isFocused
-                                    ? "var(--text-secondary)"
-                                    : "var(--borders)",
-                                  boxShadow: state.isFocused
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : state.isHovered
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : "none",
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: "var(--text-primary)",
-                                  "&:hover": {
-                                    borderColor: "var(--text-secondary)",
-                                    boxShadow:
-                                      "0 0 4px rgba(109, 118, 126, 0.8)",
-                                  },
-                                  transition: "all 0.3s ease-in-out",
-                                  cursor: "pointer",
-                                }),
-                                menu: (base) => ({
-                                  ...base,
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: "var(--text-primary)",
-                                  border: `1px solid var(--borders)`,
-                                }),
-                                option: (base, state) => ({
-                                  ...base,
-                                  backgroundColor: state.isSelected
-                                    ? isDarkMode
-                                      ? "#333333"
-                                      : "#e9ecef"
-                                    : state.isFocused
-                                    ? isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa"
-                                    : base.backgroundColor,
-                                  color: state.isSelected
-                                    ? "var(--text-primary)"
-                                    : base.color,
-                                  cursor: "pointer",
-                                  "&:hover": {
-                                    backgroundColor: isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa",
-                                  },
-                                }),
-                                singleValue: (base) => ({
-                                  ...base,
-                                  color: "var(--text-primary)",
-                                }),
-                                placeholder: (base) => ({
-                                  ...base,
-                                  color: "var(--text-secondary)",
-                                }),
-                                input: (base) => ({
-                                  ...base,
-                                  color: "var(--text-primary)",
-                                }),
-                              }}
-                              id="allowance_matrix_id"
-                              name="allowanceMatrixId"
-                              options={allowanceMatrixOptions}
-                              value={allowanceMatrixOptions.find(
-                                (opt) =>
-                                  String(opt.value) ===
-                                  String(inv.allowanceMatrixId)
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="invoice"
+                            >
+                              Invoice
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`invoice${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="invoice"
+                                value={inv.invoice}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "invoice",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`invoice${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`invoice${custIndex}`]}
+                                </p>
                               )}
-                              onChange={(selected) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "allowanceMatrixId",
-                                  selected?.value || null
-                                )
-                              }
-                              placeholder="Select Source and Destination"
-                            />
-                            {errors[`allowanceMatrixId${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`allowanceMatrixId${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                          <label
-                            className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
-                            htmlFor="tsm_trucktype"
-                          >
-                            TSM Truck Type
-                            <Select
-                              className={`${styles.input} ${
-                                errors[`tsmTrucktype_${custIndex}`]
-                                  ? styles["error-input"]
-                                  : ""
-                              }`}
-                              styles={{
-                                control: (base, state) => ({
-                                  ...base,
-                                  borderColor: state.isFocused
-                                    ? "var(--text-secondary)"
-                                    : "var(--borders)",
-                                  boxShadow: state.isFocused
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : state.isHovered
-                                    ? "0 0 4px rgba(109, 118, 126, 0.8)"
-                                    : "none",
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                  "&:hover": {
-                                    borderColor: "var(--text-secondary)",
-                                    boxShadow:
-                                      "0 0 4px rgba(109, 118, 126, 0.8)",
-                                  },
-                                  transition: "all 0.3s ease-in-out",
-                                  cursor: "pointer",
-                                }),
-                                menu: (base) => ({
-                                  ...base,
-                                  backgroundColor: isDarkMode
-                                    ? "var(--cards)"
-                                    : "var(--background)",
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                  border: `1px solid ${
-                                    isDarkMode
-                                      ? "var(--borders)"
-                                      : "var(--borders)"
-                                  }`,
-                                }),
-                                option: (base, state) => ({
-                                  ...base,
-                                  backgroundColor: state.isSelected
-                                    ? isDarkMode
-                                      ? "#333333"
-                                      : "#e9ecef"
-                                    : state.isFocused
-                                    ? isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa"
-                                    : base.backgroundColor,
-                                  color: state.isSelected
-                                    ? isDarkMode
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="cdn"
+                            >
+                              CDN
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`cdn${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="cdn"
+                                value={inv.cdn}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "cdn",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`cdn${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`cdn${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="quantity"
+                            >
+                              Quantity
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`quantity${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="quantity"
+                                value={inv.quantity}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`quantity${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`quantity${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="amount"
+                            >
+                              Amount
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`amount${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="number"
+                                id="amount"
+                                value={inv.amount}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "amount",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`amount${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`amount${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="po_number"
+                            >
+                              PO Number
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`poNumber${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="po_number"
+                                value={inv.poNumber}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "poNumber",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`poNumber${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`poNumber${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="seal_number"
+                            >
+                              Seal Number
+                              <input
+                                className={`${styles.input} ${
+                                  errors[`sealNumber${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                type="text"
+                                id="seal_number"
+                                value={inv.sealNumber}
+                                onChange={(e) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "sealNumber",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {errors[`sealNumber${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`sealNumber${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="tsm_trucktype"
+                            >
+                              TSM Truck Type
+                              <Select
+                                className={`${styles.input} ${
+                                  errors[`tsmTrucktype_${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                styles={{
+                                  control: (base, state) => ({
+                                    ...base,
+                                    borderColor: state.isFocused
+                                      ? "var(--text-secondary)"
+                                      : "var(--borders)",
+                                    boxShadow: state.isFocused
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : state.isHovered
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : "none",
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: isDarkMode
                                       ? "var(--text-primary)"
-                                      : "var(--text-primary)"
-                                    : base.color,
-                                  cursor: "pointer",
-                                  "&:hover": {
+                                      : "var(--text-primary)",
+                                    "&:hover": {
+                                      borderColor: "var(--text-secondary)",
+                                      boxShadow:
+                                        "0 0 4px rgba(109, 118, 126, 0.8)",
+                                    },
+                                    transition: "all 0.3s ease-in-out",
+                                    cursor: "pointer",
+                                  }),
+                                  menu: (base) => ({
+                                    ...base,
                                     backgroundColor: isDarkMode
-                                      ? "#2a2a2a"
-                                      : "#f8f9fa",
-                                  },
-                                }),
-                                singleValue: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                }),
-                                placeholder: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-secondary)"
-                                    : "var(--text-secondary)",
-                                }),
-                                input: (base) => ({
-                                  ...base,
-                                  color: isDarkMode
-                                    ? "var(--text-primary)"
-                                    : "var(--text-primary)",
-                                }),
-                              }}
-                              id="tsm_trucktype"
-                              options={tsmTrucktypeOptions}
-                              value={tsmTrucktypeOptions.find(
-                                (opt) => opt.value === inv.tsmTrucktype
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                    border: `1px solid ${
+                                      isDarkMode
+                                        ? "var(--borders)"
+                                        : "var(--borders)"
+                                    }`,
+                                  }),
+                                  option: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: state.isSelected
+                                      ? isDarkMode
+                                        ? "#333333"
+                                        : "#e9ecef"
+                                      : state.isFocused
+                                      ? isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa"
+                                      : base.backgroundColor,
+                                    color: state.isSelected
+                                      ? isDarkMode
+                                        ? "var(--text-primary)"
+                                        : "var(--text-primary)"
+                                      : base.color,
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa",
+                                    },
+                                  }),
+                                  singleValue: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                  }),
+                                  placeholder: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-secondary)"
+                                      : "var(--text-secondary)",
+                                  }),
+                                  input: (base) => ({
+                                    ...base,
+                                    color: isDarkMode
+                                      ? "var(--text-primary)"
+                                      : "var(--text-primary)",
+                                  }),
+                                }}
+                                id="tsm_trucktype"
+                                options={tsmTrucktypeOptions}
+                                value={tsmTrucktypeOptions.find(
+                                  (opt) => opt.value === inv.tsmTrucktype
+                                )}
+                                onChange={(selected) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "tsmTrucktype",
+                                    selected?.value || ""
+                                  )
+                                }
+                                placeholder="Select TSM Truck Type"
+                              />
+                              {errors[`tsmTrucktype_${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`tsmTrucktype_${custIndex}`]}
+                                </p>
                               )}
-                              onChange={(selected) =>
-                                handleInvoiceFieldChange(
-                                  custIndex,
-                                  invIndex,
-                                  "tsmTrucktype",
-                                  selected?.value || ""
-                                )
-                              }
-                              placeholder="Select TSM Truck Type"
-                            />
-                            {errors[`tsmTrucktype_${custIndex}`] && (
-                              <p className={styles["error-message"]}>
-                                {errors[`tsmTrucktype_${custIndex}`]}
-                              </p>
-                            )}
-                          </label>
-                        </div>
-                      ))}
+                            </label>
+                            <label
+                              className={`${styles.label} ${styles["customer-invoice-label"]} ${styles["invoice-label"]}`}
+                              htmlFor="allowance_matrix_id"
+                            >
+                              Source and Destination
+                              <Select
+                                className={`${styles.input} ${
+                                  errors[`allowanceMatrixId${custIndex}`]
+                                    ? styles["error-input"]
+                                    : ""
+                                }`}
+                                styles={{
+                                  control: (base, state) => ({
+                                    ...base,
+                                    borderColor: state.isFocused
+                                      ? "var(--text-secondary)"
+                                      : "var(--borders)",
+                                    boxShadow: state.isFocused
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : state.isHovered
+                                      ? "0 0 4px rgba(109, 118, 126, 0.8)"
+                                      : "none",
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: "var(--text-primary)",
+                                    "&:hover": {
+                                      borderColor: "var(--text-secondary)",
+                                      boxShadow:
+                                        "0 0 4px rgba(109, 118, 126, 0.8)",
+                                    },
+                                    transition: "all 0.3s ease-in-out",
+                                    cursor: "pointer",
+                                  }),
+                                  menu: (base) => ({
+                                    ...base,
+                                    backgroundColor: isDarkMode
+                                      ? "var(--cards)"
+                                      : "var(--background)",
+                                    color: "var(--text-primary)",
+                                    border: `1px solid var(--borders)`,
+                                  }),
+                                  option: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: state.isSelected
+                                      ? isDarkMode
+                                        ? "#333333"
+                                        : "#e9ecef"
+                                      : state.isFocused
+                                      ? isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa"
+                                      : base.backgroundColor,
+                                    color: state.isSelected
+                                      ? "var(--text-primary)"
+                                      : base.color,
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: isDarkMode
+                                        ? "#2a2a2a"
+                                        : "#f8f9fa",
+                                    },
+                                  }),
+                                  singleValue: (base) => ({
+                                    ...base,
+                                    color: "var(--text-primary)",
+                                  }),
+                                  placeholder: (base) => ({
+                                    ...base,
+                                    color: "var(--text-secondary)",
+                                  }),
+                                  input: (base) => ({
+                                    ...base,
+                                    color: "var(--text-primary)",
+                                  }),
+                                }}
+                                id="allowance_matrix_id"
+                                name="allowanceMatrixId"
+                                options={filteredAllowanceMatrixOptions}
+                                value={filteredAllowanceMatrixOptions.find(
+                                  (opt) =>
+                                    String(opt.value) ===
+                                    String(inv.allowanceMatrixId)
+                                )}
+                                onChange={(selected) =>
+                                  handleInvoiceFieldChange(
+                                    custIndex,
+                                    invIndex,
+                                    "allowanceMatrixId",
+                                    selected?.value || null
+                                  )
+                                }
+                                placeholder="Select Source and Destination"
+                                isDisabled={!dmrsData.truckType}
+                              />
+                              {errors[`allowanceMatrixId${custIndex}`] && (
+                                <p className={styles["error-message"]}>
+                                  {errors[`allowanceMatrixId${custIndex}`]}
+                                </p>
+                              )}
+                            </label>
+                          </div>
+                        );
+                      })}
                       <button
                         type="button"
                         className={styles["add-customer-invoice"]}

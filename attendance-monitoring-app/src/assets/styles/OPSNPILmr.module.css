@@ -350,34 +350,55 @@
   display: inline-block;
   width: 10px;
   height: 10px;
-  background-color: var(--tertiary-yellow);
+  background-color: var(--status-pending);
   border-radius: 50%;
   margin-right: 5px;
 }
-
+.status-pin-verified {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: var(--status-verified);
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.status-pin-reviewed {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: var(--status-reviewed);
+  border-radius: 50%;
+  margin-right: 5px;
+}
 .status-pin-requested {
   display: inline-block;
   width: 10px;
   height: 10px;
-  background-color: var(--primary-blue);
+  background-color: var(--status-requested);
   border-radius: 50%;
   margin-right: 5px;
 }
-
 .status-pin-approved {
   display: inline-block;
   width: 10px;
   height: 10px;
-  background-color: var(--secondary-green);
+  background-color: var(--status-approved);
   border-radius: 50%;
   margin-right: 5px;
 }
-
 .status-pin-declined {
   display: inline-block;
   width: 10px;
   height: 10px;
-  background-color: var(--danger-red);
+  background-color: var(--status-declined);
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.status-pin-completed {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: var(--status-completed);
   border-radius: 50%;
   margin-right: 5px;
 }
@@ -393,7 +414,7 @@
   font-family: var(--font-primary);
   color: var(--text-primary);
   background: var(--borders);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 600;
   text-align: left;
 }
@@ -443,7 +464,7 @@
   padding: 0.5rem;
   font-family: var(--font-secondary);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: normal;
   text-align: left;
   vertical-align: middle;
@@ -488,8 +509,8 @@
 .check-button,
 .edit-button,
 .delete-button {
-  width: 35px;
-  height: 35px;
+  width: 25px;
+  height: 25px;
   padding: 4px;
   border: 1px solid var(--borders);
   border-radius: 4px;

@@ -47,7 +47,7 @@ const insertCustomer = async (req, res) => {
     }
 
     const sql = `
-      INSERT INTO customers (principal_id, customer_number, customer_name)
+      INSERT INTO customers (principal, customer_number, customer_name)
       VALUES (?, ?, ?)
     `;
     await runQuery(sql, [principal, customer_number, customer_name]);
@@ -91,13 +91,14 @@ const updateCustomer = async (req, res) => {
 
     const sql = `
       UPDATE customers 
-      SET principal_id = ?, customer_name = ?, customer_number = ?
+      SET principal = ?, customer_name = ?, customer_number = ?
       WHERE id = ?
     `;
     const result = await runQuery(sql, [
       principal,
       customer_name,
       customer_number,
+      id,
     ]);
 
     if (result.affectedRows === 0) {

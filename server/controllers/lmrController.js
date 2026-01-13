@@ -62,8 +62,17 @@ const getNpiLmrs = async (req, res) => {
 
         -- ROUTES FROM LMR'S allowance_matrix_id
         am.source AS route_source,
-        am.destination AS route_destination,
-        CONCAT(am.source, ' - ', am.destination) AS route_name
+          CONCAT(
+              am.first_destination,
+              IF(am.second_destination IS NULL OR am.second_destination = '', '', CONCAT(' - ', am.second_destination))
+          ) AS route_destination,
+         CONCAT(
+          am.source, ' - ', am.first_destination,
+          IF(am.second_destination IS NULL OR am.second_destination = '', 
+            '', 
+            CONCAT(' - ', am.second_destination)
+          )
+      ) AS route_name
 
       FROM npi_lmr
       LEFT JOIN npi_dmr dmr ON npi_lmr.dmr_id = dmr.id
@@ -91,7 +100,7 @@ const getNpiLmrs = async (req, res) => {
       LEFT JOIN allowance_matrix am ON npi_lmr.allowance_matrix_id = am.id
 
       ORDER BY 
-        FIELD(npi_lmr.status, 'Pending', 'Requested', 'Approved', 'Declined'),
+        FIELD(npi_lmr.status, 'Pending', 'Verified', 'Reviewed', 'Approved', 'Declined'),
         npi_lmr.created_at ASC
     `);
 
@@ -148,7 +157,7 @@ const approveNpiLmr = async (req, res) => {
 
     const updateLmrStatus = `
       UPDATE npi_lmr
-      SET status = 'Requested'
+      SET status = 'Verified'
       WHERE dmr_id = ?
     `;
 
@@ -156,7 +165,7 @@ const approveNpiLmr = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Allowance created and LMR updated to Requested.",
+      message: "Allowance created and LMR updated to Verified.",
     });
   } catch (error) {
     console.error("Error approving LMR:", error);
@@ -190,7 +199,7 @@ const updateNpiLmr = async (req, res) => {
     await runQuery(
       `UPDATE npi_lmr
        SET driver_id = ?, 
-           truck_id = ?,
+           truck_id = ?, 
            allowance_matrix_id = ?
        WHERE dmr_id IN (${dmrIds.join(",")})`,
       [driver_id, truck_id, allowance_matrix_id]
@@ -227,41 +236,8 @@ const updateNpiLmr = async (req, res) => {
   }
 };
 
-const deleteNpiLmr = async (req, res) => {
-  const { waybill } = req.params;
-
-  if (!waybill) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Waybill is required." });
-  }
-
-  try {
-    const deleteCrewQuery = `
-      DELETE c FROM npi_lmr_crews c
-      JOIN npi_lmr l ON c.lmr_id = l.id
-      JOIN npi_dmr d ON l.dmr_id = d.id
-      WHERE d.waybill = ?
-    `;
-    await runQuery(deleteCrewQuery, [waybill]);
-
-    const deleteLmrQuery = `
-      DELETE l FROM npi_lmr l
-      JOIN npi_dmr d ON l.dmr_id = d.id
-      WHERE d.waybill = ?
-    `;
-    await runQuery(deleteLmrQuery, [waybill]);
-
-    return res.json({ success: true, message: "LMR deleted successfully." });
-  } catch (error) {
-    console.error("Error deleting LMR:", error);
-    return res.status(500).json({ success: false, message: "Database error." });
-  }
-};
-
 module.exports = {
   getNpiLmrs,
   approveNpiLmr,
   updateNpiLmr,
-  deleteNpiLmr,
 };

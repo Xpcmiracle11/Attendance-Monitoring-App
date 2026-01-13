@@ -5,8 +5,6 @@ import styles from "../../../../assets/styles/OPSNPILmr.module.css";
 import crossIcon from "../../../../assets/images/cross-icon.svg";
 import editIcon from "../../../../assets/images/edit-icon.svg";
 import editHoverIcon from "../../../../assets/images/edit-hovered-icon.svg";
-import deleteIcon from "../../../../assets/images/delete-icon.svg";
-import deleteHoverIcon from "../../../../assets/images/delete-hovered-icon.svg";
 import checkIcon from "../../../../assets/images/check-icon.svg";
 import checkHoverIcon from "../../../../assets/images/check-hovered-icon.svg";
 import filterIcon from "../../../../assets/images/filter-icon.svg";
@@ -40,7 +38,7 @@ const OPSLmr = () => {
   const [search, setSearch] = useState("");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 20;
   const [tempFromDate, setTempFromDate] = useState("");
   const [tempToDate, setTempToDate] = useState("");
   const [sortOrder, setSortOrder] = useState("");
@@ -49,7 +47,6 @@ const OPSLmr = () => {
   const [appliedToDate, setAppliedToDate] = useState("");
   const [isCheckModalOpen, setIsCheckModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedLmr, setSelectedLmr] = useState(null);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -62,7 +59,6 @@ const OPSLmr = () => {
   const exportRef = useRef(null);
   const [isCheckHovered, setIsCheckHovered] = useState(null);
   const [isEditHovered, setIsEditHovered] = useState(null);
-  const [isDeleteHovered, setIsDeleteHovered] = useState(null);
   const [lmrsData, setLmrsData] = useState({
     driverId: "",
     crewId: "",
@@ -501,33 +497,6 @@ const OPSLmr = () => {
     }
   };
 
-  const toggleDeleteModal = (lmr = null) => {
-    setSelectedLmr(lmr);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setSelectedLmr(null);
-    setIsDeleteModalOpen(false);
-  };
-
-  const handleDeleteLmr = async () => {
-    if (!selectedLmr?.dmr_waybill) return;
-
-    try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/delete-lmr/${selectedLmr.dmr_waybill}`
-      );
-
-      if (response.data.success) {
-        fetchLmrs();
-        closeDeleteModal();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const toggleCheckModal = (lmr = null) => {
     setSelectedLmr(lmr);
     setIsCheckModalOpen(true);
@@ -710,6 +679,7 @@ const OPSLmr = () => {
           const options = filteredTrucks.map((truck) => ({
             value: String(truck.id),
             label: `${truck.plate_number} - ${truck.truck_type}`,
+            truckType: truck.truck_type,
           }));
 
           setPlateNumberOptions(options);
@@ -722,32 +692,41 @@ const OPSLmr = () => {
       });
   }, [lmrs, selectedLmr]);
 
-  const [allowanceMatrixOptions, setAllowanceMatrixOptions] = useState([]);
+  const [allowanceMatrixData, setAllowanceMatrixData] = useState([]);
 
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/matrixes`)
-      .then((response) => {
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const options = response.data.data.map((matrix) => ({
-            value: String(matrix.id),
-            label: `${matrix.source} - ${matrix.destination}`,
-          }));
-
-          setAllowanceMatrixOptions(options);
-        } else {
-          console.error("Invalid data format:", response.data);
+      .then((res) => {
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setAllowanceMatrixData(res.data.data);
         }
       })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-      });
+      .catch((err) => console.error("Error fetching allowance matrix:", err));
   }, []);
+
+  const filteredLmrAllowanceMatrixOptions = allowanceMatrixData
+    .filter(
+      (matrix) =>
+        matrix.trip_type === "DMR" &&
+        matrix.principal === "NPI" &&
+        matrix.truck_type === lmrsData.tsmTrucktype
+    )
+    .map((matrix) => {
+      const secondDest = matrix.second_destination?.trim()
+        ? ` → ${matrix.second_destination}`
+        : "";
+
+      return {
+        value: String(matrix.id),
+        label: `(${matrix.code}) ${matrix.source} → ${matrix.first_destination}${secondDest}`,
+      };
+    });
 
   return (
     <div className={styles["lmr-content"]}>
       <div className={styles["content-header-container"]}>
-        <h1 className={styles["page-title"]}>LMR</h1>
+        <h1 className={styles["page-title"]}>NPI LMR</h1>
       </div>
       <div className={styles["content-body-container"]}>
         <div className={styles["filter-container"]} ref={filterRef}>
@@ -1146,7 +1125,7 @@ const OPSLmr = () => {
                 const renderedWaybills = new Set();
 
                 return paginatedLmrs.map((lmr, index) => {
-                  const showButtons = !renderedWaybills.has(lmr.dmr_waybill);
+                  const showActions = !renderedWaybills.has(lmr.dmr_waybill);
                   renderedWaybills.add(lmr.dmr_waybill);
                   return (
                     <tr className={styles.btr} key={lmr.dmr_waybill + index}>
@@ -1155,12 +1134,18 @@ const OPSLmr = () => {
                           className={
                             lmr.status === "Pending"
                               ? styles["status-pin-pending"]
+                              : lmr.status === "Verified"
+                              ? styles["status-pin-verified"]
+                              : lmr.status === "Reviewed"
+                              ? styles["status-pin-reviewed"]
                               : lmr.status === "Requested"
                               ? styles["status-pin-requested"]
                               : lmr.status === "Approved"
                               ? styles["status-pin-approved"]
                               : lmr.status === "Declined"
                               ? styles["status-pin-declined"]
+                              : lmr.status === "Completed"
+                              ? styles["status-pin-completed"]
                               : ""
                           }
                         ></span>
@@ -1198,8 +1183,13 @@ const OPSLmr = () => {
                       <td className={styles.td}>{lmr.status}</td>
                       <td className={styles.td}>
                         <div className={styles["action-container"]}>
-                          {showButtons &&
+                          {showActions &&
+                            lmr.status !== "Verified" &&
+                            lmr.status !== "Reviewed" &&
                             lmr.status !== "Requested" &&
+                            lmr.status !== "Approved" &&
+                            lmr.status !== "Declined" &&
+                            lmr.status !== "Completed" &&
                             lmr.driver_id &&
                             lmr.truck_id && (
                               <button
@@ -1220,7 +1210,7 @@ const OPSLmr = () => {
                                 <p>Approve</p>
                               </button>
                             )}
-                          {showButtons && (
+                          {showActions && lmr.status === "Pending" && (
                             <button
                               className={styles["edit-button"]}
                               onMouseEnter={() => setIsEditHovered(index)}
@@ -1237,25 +1227,6 @@ const OPSLmr = () => {
                                 alt="Edit"
                               />
                               <p>Edit</p>
-                            </button>
-                          )}
-                          {showButtons && (
-                            <button
-                              className={styles["delete-button"]}
-                              onMouseEnter={() => setIsDeleteHovered(index)}
-                              onMouseLeave={() => setIsDeleteHovered(null)}
-                              onClick={() => toggleDeleteModal(lmr)}
-                            >
-                              <img
-                                className={styles["delete-icon"]}
-                                src={
-                                  isDeleteHovered === index
-                                    ? deleteHoverIcon
-                                    : deleteIcon
-                                }
-                                alt="Delete"
-                              />
-                              <p>Delete</p>
                             </button>
                           )}
                         </div>
@@ -1371,7 +1342,7 @@ const OPSLmr = () => {
         >
           <div className={styles["modal-container"]}>
             <div className={styles["modal-header-container"]}>
-              <h3 className={styles["modal-title"]}>Edit lmr</h3>
+              <h3 className={styles["modal-title"]}>Edit LMR</h3>
               <button
                 className={styles["close-modal-button"]}
                 onClick={closeEditModal}
@@ -1686,9 +1657,10 @@ const OPSLmr = () => {
                     setLmrsData((prev) => ({
                       ...prev,
                       truckId: selected?.value || "",
+                      tsmTrucktype: selected?.truckType || "",
+                      allowanceMatrixId: null,
                     }))
                   }
-                  classNamePrefix="react-select"
                   placeholder="Select Truck"
                 />
                 {errors.truckId && (
@@ -1696,7 +1668,7 @@ const OPSLmr = () => {
                 )}
               </label>
               <label className={styles.label} htmlFor="allowance_matrix_id">
-                Source and Destination
+                Source and Destinations
                 <Select
                   className={`${styles.input} ${
                     errors.allowanceMatrixId ? styles["error-input"] : ""
@@ -1715,7 +1687,9 @@ const OPSLmr = () => {
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                       "&:hover": {
                         borderColor: "var(--text-secondary)",
                         boxShadow: "0 0 4px rgba(109, 118, 126, 0.8)",
@@ -1728,8 +1702,12 @@ const OPSLmr = () => {
                       backgroundColor: isDarkMode
                         ? "var(--cards)"
                         : "var(--background)",
-                      color: "var(--text-primary)",
-                      border: `1px solid var(--borders)`,
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
+                      border: `1px solid ${
+                        isDarkMode ? "var(--borders)" : "var(--borders)"
+                      }`,
                     }),
                     option: (base, state) => ({
                       ...base,
@@ -1743,7 +1721,9 @@ const OPSLmr = () => {
                           : "#f8f9fa"
                         : base.backgroundColor,
                       color: state.isSelected
-                        ? "var(--text-primary)"
+                        ? isDarkMode
+                          ? "var(--text-primary)"
+                          : "var(--text-primary)"
                         : base.color,
                       cursor: "pointer",
                       "&:hover": {
@@ -1752,30 +1732,40 @@ const OPSLmr = () => {
                     }),
                     singleValue: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                     placeholder: (base) => ({
                       ...base,
-                      color: "var(--text-secondary)",
+                      color: isDarkMode
+                        ? "var(--text-secondary)"
+                        : "var(--text-secondary)",
                     }),
                     input: (base) => ({
                       ...base,
-                      color: "var(--text-primary)",
+                      color: isDarkMode
+                        ? "var(--text-primary)"
+                        : "var(--text-primary)",
                     }),
                   }}
                   id="allowance_matrix_id"
                   name="allowanceMatrixId"
-                  options={allowanceMatrixOptions}
-                  value={allowanceMatrixOptions.find(
-                    (opt) => opt.value === lmrsData.allowanceMatrixId
-                  )}
+                  options={filteredLmrAllowanceMatrixOptions}
+                  value={
+                    filteredLmrAllowanceMatrixOptions.find(
+                      (opt) =>
+                        String(opt.value) === String(lmrsData.allowanceMatrixId)
+                    ) || null
+                  }
                   onChange={(selected) =>
                     setLmrsData((prev) => ({
                       ...prev,
-                      allowanceMatrixId: selected?.value || "",
+                      allowanceMatrixId: selected?.value || null,
                     }))
                   }
                   placeholder="Select Source and Destination"
+                  isDisabled={!lmrsData.tsmTrucktype}
                 />
                 {errors.allowanceMatrixId && (
                   <p className={styles["error-message"]}>
@@ -1783,39 +1773,12 @@ const OPSLmr = () => {
                   </p>
                 )}
               </label>
+
               {errors.apiError && (
                 <p className={styles["error-message"]}>{errors.apiError}</p>
               )}
               <button className={styles["submit-button"]}>Submit</button>
             </form>
-          </div>
-        </Modal>
-      )}
-      {isDeleteModalOpen && selectedLmr && (
-        <Modal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-        >
-          <div
-            className={`${styles["modal-container"]} ${styles["delete-modal-container"]}`}
-          >
-            <h1 className={styles["delete-modal-header"]}>
-              Are you sure to delete this LMR?
-            </h1>
-            <div className={styles["delete-modal-button-container"]}>
-              <button
-                className={styles["delete-modal-button"]}
-                onClick={handleDeleteLmr}
-              >
-                Delete
-              </button>
-              <button
-                className={styles["cancel-delete-modal-button"]}
-                onClick={closeDeleteModal}
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         </Modal>
       )}
@@ -1828,7 +1791,7 @@ const OPSLmr = () => {
             className={`${styles["modal-container"]} ${styles["check-modal-container"]}`}
           >
             <h1 className={styles["check-modal-header"]}>
-              Request allowance for this waybill?
+              Add this waybill for request allowance?
             </h1>
             <div className={styles["check-modal-button-container"]}>
               <button
